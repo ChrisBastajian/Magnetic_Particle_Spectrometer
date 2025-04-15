@@ -1,7 +1,9 @@
 import customtkinter as ctk
-from tkinter import Listbox
+from tkinter import Listbox, Toplevel
 import matplotlib.pyplot as plt
 import time
+
+from matplotlib.backends._backend_tk import NavigationToolbar2Tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 ctk.set_appearance_mode("light_gray")
@@ -135,8 +137,6 @@ class App(ctk.CTk):
         self.canvas6 = FigureCanvasTkAgg(self.fig6, master=self)
         self.canvas6.get_tk_widget().place(x=x_canvas[2], y=y_canvas[1], anchor='center')
 
-        from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
-
         # For each canvas
         self.toolbar1 = NavigationToolbar2Tk(self.canvas1, self)
         self.toolbar1.update()
@@ -162,6 +162,51 @@ class App(ctk.CTk):
         self.toolbar6.update()
         self.toolbar6.place(x=x_canvas[2], y=y_canvas[1] + int(self.height * 0.1), anchor='center')
 
+        # Add a button for each figure to open the plot in a new window
+        self.add_plot_button(self.fig1, x_canvas[0], y_canvas[0])
+        self.add_plot_button(self.fig2, x_canvas[1], y_canvas[0])
+        self.add_plot_button(self.fig3, x_canvas[2], y_canvas[0])
+        self.add_plot_button(self.fig4, x_canvas[0], y_canvas[1])
+        self.add_plot_button(self.fig5, x_canvas[1], y_canvas[1])
+        self.add_plot_button(self.fig6, x_canvas[2], y_canvas[1])
+
+    def add_plot_button(self, figure, x, y):
+        button = ctk.CTkButton(self, text="View Full Plot", command=lambda: self.open_plot_window(figure))
+        button.place(x=x, y=y + int(self.height * 0.2), anchor="center")
+
+    def open_plot_window(self, figure):
+        # Create a new top-level window with customtkinter
+        new_window = ctk.CTkToplevel(self)
+        new_window.title("Full Plot")
+        new_window.geometry(f"{self.width}x{self.height}")
+        new_window.attributes("-topmost", True)
+
+        # Create a CTkFrame for better layout management
+        frame = ctk.CTkFrame(new_window, bg_color="gray", fg_color="gray", width=self.width, height=self.height)
+        frame.pack(fill="both", expand=True)
+
+        # Create a new figure for the new window (copy the content from the original figure)
+        new_figure = plt.Figure(figsize=figure.get_size_inches())
+        new_ax = new_figure.add_subplot(111)
+
+        # Copy plot data (lines, labels, etc.)
+        for line in figure.axes[0].lines:
+            new_ax.plot(line.get_xdata(), line.get_ydata(), label=line.get_label())
+
+        # Copy axis properties
+        new_ax.set_xlabel(figure.axes[0].get_xlabel())
+        new_ax.set_ylabel(figure.axes[0].get_ylabel())
+        new_ax.set_title(figure.axes[0].get_title())
+        new_ax.legend()
+
+        # Create a canvas to render the new figure in the new window
+        canvas = FigureCanvasTkAgg(new_figure, master=frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True)
+
+        toolbar = NavigationToolbar2Tk(canvas, new_window)
+        toolbar.update()
+        toolbar.place(x=self.width//2, y=self.height*0.8, anchor='center')
 
     def open_dropdown(self):
         dropdown_window = ctk.CTkToplevel(self)
