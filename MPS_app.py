@@ -1,6 +1,7 @@
 import customtkinter as ctk
 from tkinter import Listbox, Toplevel
 import matplotlib.pyplot as plt
+import receive_and_analyze as analyze
 import time
 
 from matplotlib.backends._backend_tk import NavigationToolbar2Tk
@@ -170,6 +171,7 @@ class App(ctk.CTk):
         self.add_plot_button(self.fig5, x_canvas[1], y_canvas[1])
         self.add_plot_button(self.fig6, x_canvas[2], y_canvas[1])
 
+    ################ Functions for user interface ###########################
     def add_plot_button(self, figure, x, y):
         button = ctk.CTkButton(self, text="View Full Plot", command=lambda: self.open_plot_window(figure))
         button.place(x=x, y=y + int(self.height * 0.2), anchor="center")
@@ -429,7 +431,87 @@ class App(ctk.CTk):
 
     #####################functions to run data#####################
     def run_background_subtraction(self):
-        return
+        # Turn the live_frequency display off if if it's on by switching state to 0:
+        self.on_off = 0
+
+        # Retrieve necessary parameters from the GUI
+        sample_rate = int(self.sample_rate)
+        num_periods = int(self.num_periods)
+
+        daq_signal = self.daq_signal_channel
+        daq_source = self.daq_current_channel
+        daq_trigger = self.daq_trigger_channel
+        gpib_address = 10
+
+        V_amplitude = float(self.ac_amplitude)
+
+        frequency = float(self.frequency)
+
+        channel = int(self.channel)
+
+        # Get the dc current you want to run through the helmoholtz coils:
+        dc_current = float(self.dc_offset)  # Amps
+
+        # Call the background_subtraction function with appropriate arguments
+        num_samples, background_magnitude, background_frequency, background_phase, daq_readout = analyze.get_background(
+            daq_signal, daq_source, sample_rate, num_periods, gpib_address, V_amplitude, frequency, channel,
+            dc_current)
+
+        recon, integral = analyze.reconstruct_and_integrate(num_samples, background_frequency, background_magnitude,
+                                                            frequency)
+
+        # Store the values in the self object to later have the option of saving them as .mat files
+        self.frequency_array_magnitude_background = background_magnitude
+        self.frequency_back = background_frequency
+        self.phase = background_phase
+        self.recon = recon
+        self.magnetization = integral
+        self.background = daq_readout
+
+        # Update Plots:
+        self.ax1.clear()
+        self.ax1.set_title("Daq Readout", fontsize=11)
+        self.ax1.set_xlabel("Number Of Samples", fontsize=10)
+        self.ax1.set_ylabel("Magnitude", fontsize=10)
+        # self.ax1.set_facecolor('#505050')
+
+        self.ax1.plot(daq_readout)
+
+        self.canvas1.draw()
+
+        self.ax2.clear()
+        self.ax2.set_title("Background Frequency Spectrum (Magnitude)", fontsize=11)
+        self.ax2.set_xlabel("Frequency, kHz", fontsize=10)
+        self.ax2.set_ylabel("Magnitude", fontsize=10)
+        if sample_rate == 100000:
+            self.ax2.set_xticks([1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 45, 49])
+        elif sample_rate == 1000000:
+            self.ax2.set_xticks([25, 75, 125, 175, 225, 275, 325, 375, 425, 475])
+        # self.ax2.set_facecolor('#505050')
+
+        self.ax2.plot(background_frequency / 1000, background_magnitude)
+
+        self.canvas2.draw()
+
+        self.ax3.clear()
+        self.ax3.set_title("Reconstructed Waveform", fontsize=11)
+        self.ax3.set_xlabel("One Period", fontsize=10)
+        self.ax3.set_ylabel("Magnitude", fontsize=10)
+        # self.ax3.set_facecolor('#505050')
+
+        self.ax3.plot(recon)
+
+        self.canvas3.draw()
+
+        self.ax4.clear()
+        self.ax4.set_title("Magnetization", fontsize=11)
+        self.ax4.set_xlabel("One Period", fontsize=10)
+        self.ax4.set_ylabel("Magnitude", fontsize=10)
+        # self.ax3.set_facecolor('#505050')
+
+        self.ax4.plot(integral)
+
+        self.canvas4.draw()
 
     def run_with_sample(self):
         return
