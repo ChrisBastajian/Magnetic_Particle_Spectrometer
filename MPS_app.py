@@ -3,7 +3,8 @@ from tkinter import Listbox
 import matplotlib.pyplot as plt
 import receive_and_analyze as analyze
 import numpy as np
-import time
+import wave_gen
+import nidaqmx
 
 from matplotlib.backends._backend_tk import NavigationToolbar2Tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -635,10 +636,66 @@ class App(ctk.CTk):
 
 
     def run_live_frequency_array(self):
-        return
+        self.on_off = 1  # set the state to on
+        # Retrieve necessary parameters from the GUI
+        # Retrieve necessary parameters from the GUI
+        sample_rate = int(self.sample_rate)
+        num_periods = int(self.num_periods)
+
+        daq_signal = self.daq_signal_channel
+        daq_source = self.daq_current_channel
+        daq_trigger = self.daq_trigger_channel
+        gpib_address = 10
+
+        V_amplitude = float(self.ac_amplitude)
+
+        frequency = float(self.frequency)
+
+        channel = int(self.channel)
+
+        num_pts_per_period = sample_rate / frequency  # Fs/F_drive
+        num_samples = int((num_periods * num_pts_per_period) + 1)
+
+        if V_amplitude > 3:
+            amplitude = 0
+
+        waveform_generator = wave_gen.connect_waveform_generator(gpib_address=gpib_address)
+        self.waveform_generator = waveform_generator  # will be used in the stop function
+        wave_gen.send_voltage(waveform_generator, V_amplitude, frequency, channel)
+
+        with nidaqmx.Task() as task:
+            task.ai_channels.add_ai_voltage_chan(daq_signal)
+            task.timing.cfg_samp_clk_timing(sample_rate, samps_per_chan=num_samples)
+
+            while self.on_off == 1:
+                voltage_raw = task.read(number_of_samples_per_channel=num_samples)  # read pure daq readout
+
+                # Get the fourier data
+                fourier_magnitude, fourier_frequency = analyze.fourier(voltage_raw, sample_rate, num_samples)
+                fourier_magnitude = np.abs(fourier_magnitude)
+
+                self.update_plot(fourier_frequency, fourier_magnitude, sample_rate)
+                self.canvas1.draw()
+                self.update()
+
+    def update_plot(self, frequency, magnitude, f_s):
+        # Update the plot
+        self.ax1.clear()
+        self.ax1.set_title("Frequency Spectrum", fontsize=11)
+        self.ax1.set_xlabel("Frequency, kHz", fontsize=10)
+        self.ax1.set_ylabel("Magnitude", fontsize=10)
+        if f_s == 100000:
+            self.ax1.set_xticks([1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 45, 49])
+        elif f_s == 1000000:
+            self.ax1.set_xticks([25, 75, 125, 175, 225, 275, 325, 375, 425, 475])
+        self.ax1.plot(frequency / 1000, magnitude)
+        self.fig1.tight_layout()
 
     def stop_acquisition(self):
-        return
+        channel = int(self.channel)
+        self.waveform_generator.write(f"OUTPUT{channel} OFF")
+        self.on_off = 0  # set the state to off
+        self.waveform_generator.close()
 
     def auto_mode(self):
         return
