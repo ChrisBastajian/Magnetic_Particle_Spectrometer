@@ -1,7 +1,8 @@
 import customtkinter as ctk
-from tkinter import Listbox, Toplevel
+from tkinter import Listbox
 import matplotlib.pyplot as plt
 import receive_and_analyze as analyze
+import numpy as np
 import time
 
 from matplotlib.backends._backend_tk import NavigationToolbar2Tk
@@ -14,6 +15,8 @@ ctk.set_default_color_theme("dark-blue")
 class App(ctk.CTk):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.frequency_array_magnitude_sample = None
+        self.run = 0
         self.title("MPS App")
         self.width = self.winfo_screenwidth()
         self.height = self.winfo_screenheight()
@@ -33,7 +36,7 @@ class App(ctk.CTk):
         self.daq_signal_channel = "Dev3/ai0"
         self.daq_current_channel = "Dev3/ai1"
         self.daq_trigger_channel = "Dev3/pfi0"
-        self.sample_rate = 1000000  #Hz
+        self.sample_rate = 100000  #Hz
         self.num_periods = 100
 
         ########### Title bar frame ########################
@@ -117,7 +120,7 @@ class App(ctk.CTk):
         self.fig6 = plt.figure(figsize=(x_fig, y_fig))
         self.ax6 = self.fig6.add_subplot(111)
 
-        y_canvas = [int(self.height *0.3), int(self.height * 0.7)]
+        y_canvas = [int(self.height *0.25), int(self.height * 0.7)]
         x_canvas = [int(self.width * 0.17), int(self.width * 0.5), int(self.width * 0.83)]
 
         self.canvas1 = FigureCanvasTkAgg(self.fig1, master=self)
@@ -141,27 +144,27 @@ class App(ctk.CTk):
         # For each canvas
         self.toolbar1 = NavigationToolbar2Tk(self.canvas1, self)
         self.toolbar1.update()
-        self.toolbar1.place(x=x_canvas[0], y=y_canvas[0] + int(self.height * 0.1), anchor='center')
+        self.toolbar1.place(x=x_canvas[0]-int(self.width *0.075), y=y_canvas[0] + int(self.height * 0.22), anchor='center')
 
         self.toolbar2 = NavigationToolbar2Tk(self.canvas2, self)
         self.toolbar2.update()
-        self.toolbar2.place(x=x_canvas[1], y=y_canvas[0] + int(self.height * 0.1), anchor='center')
+        self.toolbar2.place(x=x_canvas[1]-int(self.width *0.075), y=y_canvas[0] + int(self.height * 0.22), anchor='center')
 
         self.toolbar3 = NavigationToolbar2Tk(self.canvas3, self)
         self.toolbar3.update()
-        self.toolbar3.place(x=x_canvas[2], y=y_canvas[0] + int(self.height * 0.1), anchor='center')
+        self.toolbar3.place(x=x_canvas[2]-int(self.width *0.075), y=y_canvas[0] + int(self.height * 0.22), anchor='center')
 
         self.toolbar4 = NavigationToolbar2Tk(self.canvas4, self)
         self.toolbar4.update()
-        self.toolbar4.place(x=x_canvas[0], y=y_canvas[1] + int(self.height * 0.1), anchor='center')
+        self.toolbar4.place(x=x_canvas[0]-int(self.width *0.075), y=y_canvas[1] + int(self.height * 0.22), anchor='center')
 
         self.toolbar5 = NavigationToolbar2Tk(self.canvas5, self)
         self.toolbar5.update()
-        self.toolbar5.place(x=x_canvas[1], y=y_canvas[1] + int(self.height * 0.1), anchor='center')
+        self.toolbar5.place(x=x_canvas[1]-int(self.width *0.075), y=y_canvas[1] + int(self.height * 0.22), anchor='center')
 
         self.toolbar6 = NavigationToolbar2Tk(self.canvas6, self)
         self.toolbar6.update()
-        self.toolbar6.place(x=x_canvas[2], y=y_canvas[1] + int(self.height * 0.1), anchor='center')
+        self.toolbar6.place(x=x_canvas[2]-int(self.width *0.075), y=y_canvas[1] + int(self.height * 0.22), anchor='center')
 
         # Add a button for each figure to open the plot in a new window
         self.add_plot_button(self.fig1, x_canvas[0], y_canvas[0])
@@ -174,7 +177,7 @@ class App(ctk.CTk):
     ################ Functions for user interface ###########################
     def add_plot_button(self, figure, x, y):
         button = ctk.CTkButton(self, text="View Full Plot", command=lambda: self.open_plot_window(figure))
-        button.place(x=x, y=y + int(self.height * 0.2), anchor="center")
+        button.place(x=x++int(self.width *0.05), y=y + int(self.height * 0.22), anchor="center")
 
     def open_plot_window(self, figure):
         # Create a new top-level window with customtkinter
@@ -514,7 +517,122 @@ class App(ctk.CTk):
         self.canvas4.draw()
 
     def run_with_sample(self):
-        return
+        # Turn the live_frequency display off if if it's on by switching state to 0:
+        self.on_off = 0
+
+        self.run += 1
+
+        # Retrieve necessary parameters from the GUI
+        sample_rate = int(self.sample_rate)
+        num_periods = int(self.num_periods)
+
+        daq_signal = self.daq_signal_channel
+        daq_source = self.daq_current_channel
+        daq_trigger = self.daq_trigger_channel
+        gpib_address = 10
+
+        V_amplitude = float(self.ac_amplitude)
+
+        frequency = float(self.frequency)
+
+        channel = int(self.channel)
+
+        # Get the dc current you want to run through the helmoholtz coils:
+        dc_current = float(self.dc_offset)  # Amps
+
+        background_magnitude = self.frequency_array_magnitude_background  # will be subtracted later when we call get_sample_signal function
+
+
+
+        # get the sample's data:
+        num_samples, sample_magnitude, signal_frequency, signal_with_background, sample_phase, i_rms = analyze.get_sample_signal(
+            daq_signal, daq_source, sample_rate, num_periods, gpib_address, V_amplitude,
+            frequency, channel, dc_current, background_magnitude, self.only_odd_harmonics)
+
+        sample_phase = np.abs(sample_magnitude)
+        self.signal_with_background = signal_with_background
+
+        self.frequency_array_magnitude_sample = sample_magnitude
+
+        # reconstruct the waveform over one perios and get the magnetization (integral)
+        recon, integral = analyze.reconstruct_and_integrate(num_samples, signal_frequency, sample_magnitude,
+                                                            frequency)  # will eventually
+        # need to add phase parameter
+
+        self.magnetization = integral  # to save to .mat file
+
+        # get the magnetic field from the detected rms current:
+        H_magnitude = 5.0093 * i_rms * np.sqrt(2)
+        H = analyze.general_reconstruction(H_magnitude, frequency)
+
+        self.H_field = H  # to be saved to .mat file
+
+        # Update Plots:
+        self.ax1.clear()
+        self.ax1.set_title("Daq Readout", fontsize=11)
+        self.ax1.set_xlabel("Number Of Samples", fontsize=10)
+        self.ax1.set_ylabel("Magnitude", fontsize=10)
+        self.fig1.tight_layout()
+        # self.ax1.set_facecolor('#505050')
+
+        self.ax1.plot(signal_with_background)
+
+        self.canvas1.draw()
+
+        self.ax2.clear()
+        self.ax2.set_title("Sample's Frequency Spectrum (Backsubtracted)", fontsize=11)
+        self.ax2.set_xlabel("Frequency, kHz", fontsize=10)
+        self.ax2.set_ylabel("Magnitude", fontsize=10)
+        if sample_rate == 100000:
+            self.ax2.set_xticks([1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 45, 49])
+        elif sample_rate == 1000000:
+            self.ax2.set_xticks([25, 75, 125, 175, 225, 275, 325, 375, 425, 475])
+
+        self.ax2.plot(signal_frequency / 1000, sample_magnitude)
+
+        self.canvas2.draw()
+
+        self.ax3.clear()
+        self.ax3.set_title("Reconstructed Waveform", fontsize=11)
+        self.ax3.set_xlabel("One Period", fontsize=10)
+        self.ax3.set_ylabel("Magnitude", fontsize=10)
+        # self.ax3.set_facecolor('#505050')
+
+        self.ax3.plot(recon)
+
+        self.canvas3.draw()
+
+        self.ax4.clear()
+        self.ax4.set_title("Magnetization", fontsize=11)
+        self.ax4.set_xlabel("One Period", fontsize=10)
+        self.ax4.set_ylabel("Magnitude", fontsize=10)
+        # self.ax3.set_facecolor('#505050')
+
+        self.ax4.plot(integral)
+
+        self.canvas4.draw()
+
+        self.ax5.clear()
+        self.ax5.set_title("dM/dH Curve", fontsize=11)
+        self.ax5.set_xlabel("H", fontsize=10)
+        self.ax5.set_ylabel("dM/dH", fontsize=10)
+        # Need half of a period for MH and dM/dH:
+        integral = integral[:len(integral) // 2]
+        H = H[:len(H) // 2]
+        dMdH = analyze.dMdH(integral, H)
+
+        self.ax5.plot(H, dMdH)
+
+        self.canvas5.draw()
+
+        self.ax6.set_title("MH Curve comparison", fontsize=11)
+        self.ax6.set_xlabel("H", fontsize=10)
+        self.ax6.set_ylabel("M", fontsize=10)
+        self.ax6.plot(H, integral, label='Run#' + str(self.run))
+
+        self.ax6.legend()
+        self.canvas6.draw()
+
 
     def run_live_frequency_array(self):
         return
