@@ -1,11 +1,12 @@
 import customtkinter as ctk
-from tkinter import Listbox
+from tkinter import Listbox, filedialog
 import matplotlib.pyplot as plt
 import receive_and_analyze as analyze
 import numpy as np
 import wave_gen
 import nidaqmx
 
+from scipy.io import savemat
 from matplotlib.backends._backend_tk import NavigationToolbar2Tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
@@ -237,6 +238,8 @@ class App(ctk.CTk):
             selected = listbox.get(listbox.curselection())
             if selected == "Setup Analysis":
                 self.open_setup_analysis_window()
+            elif selected == "Save Results":
+                self.save_results()
 
         listbox.bind("<<ListboxSelect>>", on_select)
 
@@ -702,6 +705,41 @@ class App(ctk.CTk):
 
     def run_stepped(self):
         return
+
+    ####################### function to save results #########################
+    def save_results(self):
+        filename = filedialog.asksaveasfilename(defaultextension=".mat",
+                                                filetypes=[("MATLAB files", "*.mat"), ("All files", "*.*")])
+        if filename:
+
+            data = {} #empty dictionary to hold the data
+
+            # Check and add each attribute if it exists
+            if hasattr(self, 'magnetization'):
+                data['magnetization'] = self.magnetization
+            if hasattr(self, 'H_field'):
+                data['magnetic_field'] = self.H_field
+            if hasattr(self, 'frequency_array_magnitude_background'):
+                data['background_frequency_array'] = self.frequency_array_magnitude_background
+            if hasattr(self, 'frequency_array_magnitude_sample'):
+                data['sample_frequency_array'] = self.frequency_array_magnitude_sample
+            if hasattr(self, 'max_harmonic'):
+                data['third_harmonic'] = self.max_harmonic
+            if hasattr(self, 'max_H_field'):
+                data['H_field_harmonic'] = self.max_H_field
+            if hasattr(self, 'H_field_total'):
+                data['H_field_stepped'] = self.H_field_total
+            if hasattr(self, 'magnetization_total'):
+                data['magnetization_stepped'] = self.magnetization_total
+            if hasattr(self, 'background'):
+                data['background'] = self.background
+            if hasattr(self, 'signal_with_background'):
+                data['signal_with_background'] = self.signal_with_background
+            if hasattr(self, 'amplitude_array'):
+                data['amplitude_array'] = self.amplitude_array
+
+            # Save the dictionary to a MATLAB file
+            savemat(filename, data)
 
 if __name__ == "__main__":
     app = App()
