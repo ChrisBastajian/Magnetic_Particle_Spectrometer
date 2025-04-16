@@ -777,6 +777,21 @@ class App(ctk.CTk):
 
             data = {} #empty dictionary to hold the data
 
+            parameters = {
+                'ac_amplitude': getattr(self, 'ac_amplitude', None),
+                'frequency': getattr(self, 'frequency', None),
+                'channel': getattr(self, 'channel', None),
+                'dc_offset': getattr(self, 'dc_offset', None),
+                'only_odd_harmonics': getattr(self, 'only_odd_harmonics', None),
+                'triggering_enabled': getattr(self, 'triggering_enabled', None),
+                'daq_signal_channel': getattr(self, 'daq_signal_channel', None),
+                'daq_current_channel': getattr(self, 'daq_current_channel', None),
+                'daq_trigger_channel': getattr(self, 'daq_trigger_channel', None),
+                'sample_rate': getattr(self, 'sample_rate', None),
+                'num_periods': getattr(self, 'num_periods', None)
+            }
+            data['parameters'] = parameters
+
             # Check and add each attribute if it exists
             if hasattr(self, 'magnetization'):
                 data['magnetization'] = self.magnetization
