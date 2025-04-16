@@ -265,7 +265,7 @@ class App(ctk.CTk):
     def open_setup_analysis_window(self):
         setup_window = ctk.CTkToplevel(self)
         setup_window.title("Setup Analysis")
-        setup_window.geometry(str(self.width) + "x" + str(self.height))
+        setup_window.geometry(str(self.width//4) + "x" + str(self.height//4))
         setup_window.attributes("-topmost", True)
 
         frame_width = int(self.width * 0.45)
@@ -358,8 +358,6 @@ class App(ctk.CTk):
 
         yes_radio.configure(command=deselect_no)
 
-
-
         # DAQ Card Inputs Section
         daq_frame_width = int(self.width * 0.45)
         daq_frame_height = int(self.height * 0.5)
@@ -437,23 +435,37 @@ class App(ctk.CTk):
             self.sample_rate = int(sample_rate_entry.get())
             self.num_periods = int(num_periods_entry.get())
 
-            print("Saved Values:")
-            print(f"AC Amplitude: {self.ac_amplitude}")
-            print(f"Frequency: {self.frequency}")
-            print(f"Channel #: {self.channel}")
-            print(f"DC Offset: {self.dc_offset}")
-            print(f"Only Odd Harmonics: {self.only_odd_harmonics}")
-            print(f"Triggering Enabled: {self.triggering_enabled}")
-            print(f"DAQ Signal Channel: {self.daq_signal_channel}")
-            print(f"DAQ Current Channel: {self.daq_current_channel}")
-            print(f"DAQ Trigger Channel: {self.daq_trigger_channel}")
-            print(f"Sample Rate: {self.sample_rate}")
-            print(f"Num Periods: {self.num_periods}")
+            result_text = (
+                f"Saved Values:\n"
+                f"AC Amplitude: {self.ac_amplitude}\n"
+                f"Frequency: {self.frequency}\n"
+                f"Channel #: {self.channel}\n"
+                f"DC Offset: {self.dc_offset}\n"
+                f"Only Odd Harmonics: {self.only_odd_harmonics}\n"
+                f"Triggering Enabled: {self.triggering_enabled}\n"
+                f"DAQ Signal Channel: {self.daq_signal_channel}\n"
+                f"DAQ Current Channel: {self.daq_current_channel}\n"
+                f"DAQ Trigger Channel: {self.daq_trigger_channel}\n"
+                f"Sample Rate: {self.sample_rate}\n"
+                f"Num Periods: {self.num_periods}"
+            )
+            self.parameter_textbox.configure(state="normal")
+            self.parameter_textbox.delete("0.0", "end")
+            self.parameter_textbox.insert("0.0", result_text)
+            self.parameter_textbox.configure(state="disabled")
 
-            setup_window.destroy()
+            #setup_window.destroy()
 
+        #textbox to show updated parameters
+        box_width = int(self.width * 0.3)
+        box_height = int(self.height * 0.25)  # 25% of window height
+
+        self.parameter_textbox = ctk.CTkTextbox(setup_window, width=box_width, height=box_height, state='disabled', font=label_font)
+        self.parameter_textbox.place(x=self.width * 0.5, y=self.height * 0.7, anchor="center")
+
+        #Save button
         save_button = ctk.CTkButton(setup_window, text="Save Settings", command=save_values)
-        save_button.place(x=self.width * 0.5, y=self.height * 0.9, anchor="center")
+        save_button.place(x=self.width * 0.5, y=self.height * 0.85, anchor="center")
 
     #####################functions to run data#####################
     def run_background_subtraction(self):
