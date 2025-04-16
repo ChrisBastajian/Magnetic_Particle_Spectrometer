@@ -17,6 +17,7 @@ ctk.set_default_color_theme("dark-blue")
 class App(ctk.CTk):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.zoom_to_11_enabled = False
         self.frequency_array_magnitude_sample = None
         self.run = 0
         self.title("MPS App")
@@ -259,6 +260,8 @@ class App(ctk.CTk):
                 self.open_setup_analysis_window()
             elif selected == "Save Results":
                 self.save_results()
+            elif selected == "Plot Settings":
+                self.open_plot_settings_window()
 
         listbox.bind("<<ListboxSelect>>", on_select)
 
@@ -467,6 +470,25 @@ class App(ctk.CTk):
         save_button = ctk.CTkButton(setup_window, text="Save Settings", command=save_values)
         save_button.place(x=self.width * 0.5, y=self.height * 0.85, anchor="center")
 
+    def open_plot_settings_window(self):
+        plot_settings_window = ctk.CTkToplevel(self)
+        plot_settings_window.title("Plot Settings")
+        plot_settings_window.geometry("300x150")
+        plot_settings_window.attributes("-topmost", True)
+
+        def toggle_zoom():
+            self.zoom_to_11_enabled = zoom_checkbox.get()
+        zoom_checkbox = ctk.CTkCheckBox(
+            plot_settings_window,
+            text="Zoom to 11 Harmonics",
+            command=toggle_zoom
+        )
+        zoom_checkbox.pack(pady=20)
+
+        # Restore previous state (if user reopens settings)
+        if self.zoom_to_11_enabled:
+            zoom_checkbox.select()
+
     #####################functions to run data#####################
     def run_background_subtraction(self):
         # Turn the live_frequency display off if if it's on by switching state to 0:
@@ -521,11 +543,14 @@ class App(ctk.CTk):
         self.ax2.set_title("Background Frequency Spectrum (Magnitude)", fontsize=11)
         self.ax2.set_xlabel("Frequency, kHz", fontsize=10)
         self.ax2.set_ylabel("Magnitude", fontsize=10)
-        if sample_rate == 100000:
-            self.ax2.set_xticks([1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 45, 49])
-        elif sample_rate == 1000000:
-            self.ax2.set_xticks([25, 75, 125, 175, 225, 275, 325, 375, 425, 475])
-        # self.ax2.set_facecolor('#505050')
+        if self.zoom_to_11_enabled:
+            self.ax2.set_xlim(left=0, right=11)  # Zoom in to 11 harmonics
+            self.ax2.set_xticks(range(1, 12))  # Tick from 1 to 11
+        else:
+            if sample_rate == 100000:
+                self.ax2.set_xticks([1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 45, 49])
+            elif sample_rate == 1000000:
+                self.ax2.set_xticks([25, 75, 125, 175, 225, 275, 325, 375, 425, 475])
 
         self.ax2.plot(background_frequency / 1000, background_magnitude)
 
@@ -618,10 +643,14 @@ class App(ctk.CTk):
         self.ax2.set_title("Sample's Frequency Spectrum (Backsubtracted)", fontsize=11)
         self.ax2.set_xlabel("Frequency, kHz", fontsize=10)
         self.ax2.set_ylabel("Magnitude", fontsize=10)
-        if sample_rate == 100000:
-            self.ax2.set_xticks([1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 45, 49])
-        elif sample_rate == 1000000:
-            self.ax2.set_xticks([25, 75, 125, 175, 225, 275, 325, 375, 425, 475])
+        if self.zoom_to_11_enabled:
+            self.ax2.set_xlim(left=0, right=11)  # Zoom in to 11 harmonics
+            self.ax2.set_xticks(range(1, 12))  # Tick from 1 to 11
+        else:
+            if sample_rate == 100000:
+                self.ax2.set_xticks([1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 45, 49])
+            elif sample_rate == 1000000:
+                self.ax2.set_xticks([25, 75, 125, 175, 225, 275, 325, 375, 425, 475])
 
         self.ax2.plot(signal_frequency / 1000, sample_magnitude)
 
@@ -667,7 +696,6 @@ class App(ctk.CTk):
 
         self.ax6.legend()
         self.canvas6.draw()
-
 
     def run_live_frequency_array(self):
         self.on_off = 1  # set the state to on
@@ -718,10 +746,14 @@ class App(ctk.CTk):
         self.ax1.set_title("Frequency Spectrum", fontsize=11)
         self.ax1.set_xlabel("Frequency, kHz", fontsize=10)
         self.ax1.set_ylabel("Magnitude", fontsize=10)
-        if f_s == 100000:
-            self.ax1.set_xticks([1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 45, 49])
-        elif f_s == 1000000:
-            self.ax1.set_xticks([25, 75, 125, 175, 225, 275, 325, 375, 425, 475])
+        if self.zoom_to_11_enabled:
+            self.ax1.set_xlim(left=0, right=11)  # Zoom in to 11 harmonics
+            self.ax1.set_xticks(range(1, 12))  # Tick from 1 to 11
+        else:
+            if f_s == 100000:
+                self.ax1.set_xticks([1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 45, 49])
+            elif f_s == 1000000:
+                self.ax1.set_xticks([25, 75, 125, 175, 225, 275, 325, 375, 425, 475])
         self.ax1.plot(frequency / 1000, magnitude)
         self.fig1.tight_layout()
 
