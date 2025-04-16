@@ -176,10 +176,29 @@ class App(ctk.CTk):
         self.add_plot_button(self.fig5, x_canvas[1], y_canvas[1])
         self.add_plot_button(self.fig6, x_canvas[2], y_canvas[1])
 
+        #Clear Comparison Button:
+        self.clear_plot_button(self.ax1, x_canvas[0], y_canvas[0])
+        self.clear_plot_button(self.ax2, x_canvas[1], y_canvas[0])
+        self.clear_plot_button(self.ax3, x_canvas[2], y_canvas[0])
+        self.clear_plot_button(self.ax4, x_canvas[0], y_canvas[1])
+        self.clear_plot_button(self.ax5, x_canvas[1], y_canvas[1])
+        self.clear_plot_button(self.ax6, x_canvas[2], y_canvas[1])
+
     ################ Functions for user interface ###########################
+    def clear_plot_button(self, ax, x, y):
+        button = ctk.CTkButton(self, text="Clear", command=lambda: self.clear_plot(ax), width=0)
+        button.place(x=x+int(self.width *0.1), y=y + int(self.height * 0.22), anchor="center")
+
+    def clear_plot(self, ax):
+        if ax is self.ax6: #if we are resetting ax6 which contains the MH curves compared
+            self.run=0
+
+        ax.clear()
+        ax.figure.canvas.draw_idle()
+
     def add_plot_button(self, figure, x, y):
-        button = ctk.CTkButton(self, text="View Full Plot", command=lambda: self.open_plot_window(figure))
-        button.place(x=x++int(self.width *0.05), y=y + int(self.height * 0.22), anchor="center")
+        button = ctk.CTkButton(self, text="View Full Plot", command=lambda: self.open_plot_window(figure), width=0)
+        button.place(x=x+int(self.width *0.05), y=y + int(self.height * 0.22), anchor="center")
 
     def open_plot_window(self, figure):
         # Create a new top-level window with customtkinter
