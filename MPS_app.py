@@ -17,7 +17,7 @@ ctk.set_default_color_theme("dark-blue")
 class App(ctk.CTk):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.zoom_to_11_enabled = False
+        self.zoom_to_11_enabled = True
         self.frequency_array_magnitude_sample = None
         self.run = 0
         self.title("MPS App")
