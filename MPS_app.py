@@ -5,6 +5,7 @@ import receive_and_analyze as analyze
 import numpy as np
 import wave_gen
 import nidaqmx
+import time
 
 from scipy.io import savemat
 from matplotlib.backends._backend_tk import NavigationToolbar2Tk
@@ -268,7 +269,7 @@ class App(ctk.CTk):
     def open_setup_analysis_window(self):
         setup_window = ctk.CTkToplevel(self)
         setup_window.title("Setup Analysis")
-        setup_window.geometry(str(self.width//4) + "x" + str(self.height//4))
+        setup_window.geometry(str(self.width//8) + "x" + str(self.height//8))
         setup_window.attributes("-topmost", True)
 
         frame_width = int(self.width * 0.45)
@@ -763,8 +764,56 @@ class App(ctk.CTk):
         self.on_off = 0  # set the state to off
         self.waveform_generator.close()
 
-    def auto_mode(self):
-        return
+    def auto_mode(self): #To record harmonics and compare them
+        self.max_H_field = np.zeros(50)
+        self.third_harmonic = np.zeros(50)
+        harmonic_indices = [5, 10, 25, 40, 45, 50, 65, 80, 85, 90, 105]
+        v_amplitude = float(self.ac_amplitude)
+        for l in range(50):
+            sample_rate = 100000 #no need for more than that for the 11th harmonic
+            num_periods = int(self.num_periods)
+
+            daq_signal = self.daq_signal_channel
+            daq_source = self.daq_current_channel
+            daq_trigger = self.daq_trigger_channel
+            gpib_address = 10
+
+            frequency = float(self.frequency)
+
+            channel = int(self.channel)
+
+            # Get the dc current you want to run through the helmoholtz coils:
+            dc_current = float(self.dc_offset)  # Amps
+
+            if v_amplitude > 3:
+                v_amplitude = 0
+
+
+            background_magnitude = self.frequency_array_magnitude_background  # get the initial background not used here but will be implemented in the future
+
+            # get the sample's data:
+            num_samples, sample_magnitude, signal_frequency, signal_with_background, sample_phase, i_rms = analyze.get_sample_signal(
+                daq_signal, daq_source, sample_rate, num_periods, gpib_address, v_amplitude,
+                frequency, channel, dc_current, background_magnitude, False)
+
+            self.frequency_array_magnitude = sample_magnitude
+
+            # get the magnetization from the detected rms current:
+            H_magnitude = 5.0093 * i_rms * np.sqrt(2)
+            self.max_H_field[l] = H_magnitude
+            self.third_harmonic[l] = self.frequency_array_magnitude[25]  # gets 3rd harmonic =3rd
+
+            v_amplitude += 0.05
+            time.sleep(0.05)
+
+        self.ax4.clear()
+        self.ax4.set_title("3rd Harmonic vs Field", fontsize=11)
+        self.ax4.set_xlabel("H", fontsize=10)
+        self.ax4.set_ylabel("3rd harmonic", fontsize=10)
+
+        self.ax4.plot(self.max_H_field, self.third_harmonic)
+
+        self.canvas4.draw()
 
     def run_stepped(self):
         return
