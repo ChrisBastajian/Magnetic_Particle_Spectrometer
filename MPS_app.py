@@ -18,6 +18,7 @@ ctk.set_default_color_theme("dark-blue")
 class App(ctk.CTk):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.harmonics = None
         self.slope = 6.1
         self.zoom_to_11_enabled = True
         self.frequency_array_magnitude_sample = None
@@ -822,11 +823,15 @@ class App(ctk.CTk):
         self.waveform_generator.close()
 
     def auto_mode(self): #To record harmonics and compare them
-        self.max_H_field = np.zeros(50)
-        self.third_harmonic = np.zeros(50)
-        harmonic_indices = [5, 10, 25, 40, 45, 50, 65, 80, 85, 90, 105]
-        V_amplitude = 0 #start at 0...
-        for l in range(50):
+        num_steps = 70 #arrays will be of size 70
+        harmonic_orders = list(range(1, 12))  #2nd to 11th
+        harmonic_indices = [50, 150, 250, 350, 450, 550, 650, 750, 850, 950, 1050]
+
+        self.max_H_field = np.zeros(num_steps)
+        self.harmonics = {order: np.zeros(num_steps) for order in harmonic_orders}
+        v_amplitude = 0 #start at 0...
+
+        for l in range(num_steps):
             sample_rate = 100000 #no need for more than that for the 11th harmonic
             num_periods = int(self.num_periods)
 
@@ -842,7 +847,7 @@ class App(ctk.CTk):
             # Get the dc current you want to run through the helmoholtz coils:
             dc_current = float(self.dc_offset)  # Amps
 
-            if v_amplitude > 3:
+            if v_amplitude > 4.5:
                 v_amplitude = 0
 
 
@@ -858,19 +863,38 @@ class App(ctk.CTk):
             # get the magnetization from the detected rms current:
             H_magnitude = 5.0093 * i_rms * np.sqrt(2)
             self.max_H_field[l] = H_magnitude
-            self.third_harmonic[l] = self.frequency_array_magnitude[25]  # gets 3rd harmonic =3rd
+
+            # Store all harmonics
+            for i, order in enumerate(harmonic_orders):
+                self.harmonics[order][l] = sample_magnitude[harmonic_indices[i]]
 
             v_amplitude += 0.05
-            time.sleep(0.05)
+            time.sleep(0.01)
+        self.plot_harmonics()
 
-        self.ax4.clear()
-        self.ax4.set_title("3rd Harmonic vs Field", fontsize=11)
-        self.ax4.set_xlabel("H", fontsize=10)
-        self.ax4.set_ylabel("3rd harmonic", fontsize=10)
+    def plot_harmonics(self):
+        self.ax1.clear()
+        self.ax2.clear()
 
-        self.ax4.plot(self.max_H_field, self.third_harmonic)
+        self.ax1.set_title("Odd Harmonics vs Field", fontsize=11)
+        self.ax1.set_xlabel("H", fontsize=10)
+        self.ax1.set_ylabel("Harmonics", fontsize=10)
 
-        self.canvas4.draw()
+        self.ax2.set_title("Even Harmonics vs Field", fontsize=11)
+        self.ax2.set_xlabel("H", fontsize=10)
+        self.ax2.set_ylabel("Harmonics", fontsize=10)
+
+        for order in [3, 5, 7, 9, 11]: #odd harmonics
+            self.ax1.plot(self.max_H_field, self.harmonics[order],
+                          label=f'{order}rd Harmonic' if order == 3 else f'{order}th Harmonic')
+
+        for order in [2, 4, 6, 8, 10]: #Even Harmonics
+            self.ax2.plot(self.max_H_field, self.harmonics[order],
+                          label=f'{order}nd Harmonic' if order == 2 else f'{order}th Harmonic')
+        self.ax1.legend()
+        self.ax2.legend()
+        self.canvas1.draw()
+        self.canvas2.draw()
 
     def run_stepped(self):
         return
@@ -899,28 +923,37 @@ class App(ctk.CTk):
             data['parameters'] = parameters
 
             # Check and add each attribute if it exists
-            if hasattr(self, 'magnetization'):
+            if hasattr(self, 'magnetization') and self.magnetization is not None:
                 data['magnetization'] = self.magnetization
-            if hasattr(self, 'H_field'):
+            if hasattr(self, 'H_field') and self.H_field is not None:
                 data['magnetic_field'] = self.H_field
-            if hasattr(self, 'frequency_array_magnitude_background'):
+            if hasattr(self, 'frequency_array_magnitude_background') and self.frequency_array_magnitude_background is not None:
                 data['background_frequency_array'] = self.frequency_array_magnitude_background
-            if hasattr(self, 'frequency_array_magnitude_sample'):
+            if hasattr(self, 'frequency_array_magnitude_sample') and self.frequency_array_magnitude_sample is not None:
                 data['sample_frequency_array'] = self.frequency_array_magnitude_sample
-            if hasattr(self, 'max_harmonic'):
-                data['third_harmonic'] = self.max_harmonic
-            if hasattr(self, 'max_H_field'):
+            if hasattr(self, 'max_H_field') and self.max_H_field is not None:
                 data['H_field_harmonic'] = self.max_H_field
-            if hasattr(self, 'H_field_total'):
+            if hasattr(self, 'H_field_total') and self.H_field_total:
                 data['H_field_stepped'] = self.H_field_total
-            if hasattr(self, 'magnetization_total'):
-                data['magnetization_stepped'] = self.magnetization_total
-            if hasattr(self, 'background'):
+            if hasattr(self, 'background') and self.background is not None:
                 data['background'] = self.background
-            if hasattr(self, 'signal_with_background'):
+            if hasattr(self, 'signal_with_background') and self.signal_with_background is not None:
                 data['signal_with_background'] = self.signal_with_background
-            if hasattr(self, 'amplitude_array'):
-                data['amplitude_array'] = self.amplitude_array
+
+            if hasattr(self, 'harmonics'):
+                odd_harmonics = {order: self.harmonics[order] for order in [1, 3, 5, 7, 9, 11] if
+                                 self.harmonics[order] is not None}
+                even_harmonics = {order: self.harmonics[order] for order in [2, 4, 6, 8, 10] if
+                                  self.harmonics[order] is not None}
+
+                if odd_harmonics:
+                    for i in [1, 3, 5, 7, 9, 11]:
+                        i_str = "harmonic_"+str(i)
+                        data[i_str] = odd_harmonics[i]
+                if even_harmonics:
+                    for i in [2, 4, 6, 8, 10]:
+                        i_str = "harmonic_" + str(i)
+                        data[i_str] = even_harmonics[i]
 
             # Save the dictionary to a MATLAB file
             savemat(filename, data)
