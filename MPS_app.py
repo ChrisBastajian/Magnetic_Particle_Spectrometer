@@ -18,6 +18,7 @@ ctk.set_default_color_theme("dark-blue")
 class App(ctk.CTk):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.slope = 6.1
         self.zoom_to_11_enabled = True
         self.frequency_array_magnitude_sample = None
         self.run = 0
@@ -54,7 +55,7 @@ class App(ctk.CTk):
         btn_y = self.height // 36
 
         # Total number of buttons (including File)
-        num_buttons = 7
+        num_buttons = 8
         total_spacing_width = self.width * 0.8  # spread buttons across 80% of window
         start_x = (self.width - total_spacing_width) / 2
         btn_spacing = total_spacing_width / (num_buttons - 1)
@@ -66,41 +67,47 @@ class App(ctk.CTk):
                                             width=btn_width, height=btn_height)
         self.title_bar.file.place(x=start_x + btn_spacing * 0, y=btn_y, anchor='center')
 
+        self.title_bar.calibrate = ctk.CTkButton(self.title_bar, text="Auto - Calibrate",
+                                                      font=('Arial', int(self.height * 0.018)),
+                                                      command=self.calibrate_M_V,
+                                                      width=btn_width, height=btn_height)
+        self.title_bar.calibrate.place(x=start_x + btn_spacing * 1, y=btn_y, anchor='center')
+
         self.title_bar.background_sub = ctk.CTkButton(self.title_bar, text="Run Background Scan",
                                                       font=('Arial', int(self.height * 0.018)),
                                                       command=self.run_background_subtraction,
                                                       width=btn_width, height=btn_height)
-        self.title_bar.background_sub.place(x=start_x + btn_spacing * 1, y=btn_y, anchor='center')
+        self.title_bar.background_sub.place(x=start_x + btn_spacing * 2, y=btn_y, anchor='center')
 
         self.title_bar.get_results = ctk.CTkButton(self.title_bar, text="Run With Sample",
                                                    font=('Arial', int(self.height * 0.018)),
                                                    command=self.run_with_sample,
                                                    width=btn_width, height=btn_height)
-        self.title_bar.get_results.place(x=start_x + btn_spacing * 2, y=btn_y, anchor='center')
+        self.title_bar.get_results.place(x=start_x + btn_spacing * 3, y=btn_y, anchor='center')
 
         self.title_bar.live_frequency = ctk.CTkButton(self.title_bar, text="Run Live Frequency Array",
                                                       font=('Arial', int(self.height * 0.018)),
                                                       command=self.run_live_frequency_array,
                                                       width=btn_width, height=btn_height)
-        self.title_bar.live_frequency.place(x=start_x + btn_spacing * 3, y=btn_y, anchor='center')
+        self.title_bar.live_frequency.place(x=start_x + btn_spacing * 4, y=btn_y, anchor='center')
 
         self.title_bar.stop = ctk.CTkButton(self.title_bar, text="Stop Live Acquisition", hover_color="red",
                                             font=('Arial', int(self.height * 0.018)),
                                             command=self.stop_acquisition,
                                             width=btn_width, height=btn_height)
-        self.title_bar.stop.place(x=start_x + btn_spacing * 4, y=btn_y, anchor='center')
+        self.title_bar.stop.place(x=start_x + btn_spacing * 5, y=btn_y, anchor='center')
 
         self.title_bar.auto_mode = ctk.CTkButton(self.title_bar, text='Automated Mode',
                                                  font=('Arial', int(self.height * 0.018)),
                                                  command=self.auto_mode,
                                                  width=btn_width, height=btn_height)
-        self.title_bar.auto_mode.place(x=start_x + btn_spacing * 5, y=btn_y, anchor='center')
+        self.title_bar.auto_mode.place(x=start_x + btn_spacing * 6, y=btn_y, anchor='center')
 
         self.title_bar.get_stepped_data = ctk.CTkButton(self.title_bar, text="Run Stepped",
                                                         font=('Arial', int(self.height * 0.018)),
                                                         command=self.run_stepped,
                                                         width=btn_width, height=btn_height)
-        self.title_bar.get_stepped_data.place(x=start_x + btn_spacing * 6, y=btn_y, anchor='center')
+        self.title_bar.get_stepped_data.place(x=start_x + btn_spacing * 7, y=btn_y, anchor='center')
 
         ############### Figures ########################
         x_fig = 5.5
@@ -295,7 +302,7 @@ class App(ctk.CTk):
         y += self.height * 0.07
 
         # AC Amplitude
-        amp_label = ctk.CTkLabel(small_frame, text="AC Amplitude (V)", font=label_font)
+        amp_label = ctk.CTkLabel(small_frame, text="AC Amplitude (mT)", font=label_font)
         amp_label.place(x=x_spacing, y=y, anchor="center")
         amp_entry = ctk.CTkEntry(small_frame, width=input_width, height=input_height)
         amp_entry.insert(0, "0.1")
@@ -491,6 +498,56 @@ class App(ctk.CTk):
             zoom_checkbox.select()
 
     #####################functions to run data#####################
+    def calibrate_M_V(self):
+        self.H_cal = np.zeros(50)               #array to store the calibrated field
+        self.V_cal = np.zeros(50)
+        v_amplitude = 0 #start at 0
+        for l in range(50):
+            sample_rate = 100000 #no need for more than that for the 11th harmonic
+            num_periods = int(self.num_periods)
+
+            daq_signal = self.daq_signal_channel
+            current_source = self.daq_current_channel
+            daq_trigger = self.daq_trigger_channel
+            gpib_address = 10
+
+            frequency = float(self.frequency)
+
+            channel = int(self.channel)
+
+            #Connect to the waveform generator and send current voltage:
+            waveform_gen = wave_gen.connect_waveform_generator(gpib_address)
+            wave_gen.send_voltage(waveform_gen, v_amplitude, frequency, channel)
+
+            if v_amplitude > 3:
+                v_amplitude = 0
+
+
+            # get the sample's data:
+            i_rms = analyze.get_rms_current(current_source, sample_rate, num_periods)
+
+
+            # get the magnetization from the detected rms current:
+            H_magnitude = 5.0093 * i_rms * np.sqrt(2)
+
+            self.H_cal[l] = H_magnitude
+            self.V_cal[l] = v_amplitude
+
+            v_amplitude += 0.05
+            time.sleep(0.05)
+
+        self.ax1.clear()
+        self.ax1.set_title("H_V Calibrated", fontsize=11)
+        self.ax1.set_xlabel("V", fontsize=10)
+        self.ax1.set_ylabel("H", fontsize=10)
+
+        self.ax1.plot(self.V_cal, self.H_cal)
+
+        self.canvas1.draw()
+
+        self.slope, _ = np.polyfit(self.V_cal, self.H_cal, 1)
+        print(self.slope)
+
     def run_background_subtraction(self):
         # Turn the live_frequency display off if if it's on by switching state to 0:
         self.on_off = 0
@@ -504,7 +561,7 @@ class App(ctk.CTk):
         daq_trigger = self.daq_trigger_channel
         gpib_address = 10
 
-        V_amplitude = float(self.ac_amplitude)
+        V_amplitude = (1/self.slope) * float(self.ac_amplitude)
 
         frequency = float(self.frequency)
 
@@ -592,7 +649,7 @@ class App(ctk.CTk):
         daq_trigger = self.daq_trigger_channel
         gpib_address = 10
 
-        V_amplitude = float(self.ac_amplitude)
+        V_amplitude = (1/self.slope) * float(self.ac_amplitude)
 
         frequency = float(self.frequency)
 
@@ -710,7 +767,7 @@ class App(ctk.CTk):
         daq_trigger = self.daq_trigger_channel
         gpib_address = 10
 
-        V_amplitude = float(self.ac_amplitude)
+        V_amplitude = (1/self.slope) * float(self.ac_amplitude)
 
         frequency = float(self.frequency)
 
@@ -768,7 +825,7 @@ class App(ctk.CTk):
         self.max_H_field = np.zeros(50)
         self.third_harmonic = np.zeros(50)
         harmonic_indices = [5, 10, 25, 40, 45, 50, 65, 80, 85, 90, 105]
-        v_amplitude = float(self.ac_amplitude)
+        V_amplitude = 0 #start at 0...
         for l in range(50):
             sample_rate = 100000 #no need for more than that for the 11th harmonic
             num_periods = int(self.num_periods)
