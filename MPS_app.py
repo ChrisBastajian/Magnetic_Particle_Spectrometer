@@ -502,22 +502,25 @@ class App(ctk.CTk):
     def calibrate_M_V(self):
         self.H_cal = np.zeros(50)               #array to store the calibrated field
         self.V_cal = np.zeros(50)
+
         v_amplitude = 0 #start at 0
+        sample_rate = 100000  # no need for more than that for the 11th harmonic
+        num_periods = int(self.num_periods)
+
+        daq_signal = self.daq_signal_channel
+        current_source = self.daq_current_channel
+        daq_trigger = self.daq_trigger_channel
+        gpib_address = 10
+
+        frequency = float(self.frequency)
+
+        channel = int(self.channel)
+
+        # Connect to the waveform generator and send current voltage:
+        waveform_gen = wave_gen.connect_waveform_generator(gpib_address)
+
         for l in range(50):
-            sample_rate = 100000 #no need for more than that for the 11th harmonic
-            num_periods = int(self.num_periods)
 
-            daq_signal = self.daq_signal_channel
-            current_source = self.daq_current_channel
-            daq_trigger = self.daq_trigger_channel
-            gpib_address = 10
-
-            frequency = float(self.frequency)
-
-            channel = int(self.channel)
-
-            #Connect to the waveform generator and send current voltage:
-            waveform_gen = wave_gen.connect_waveform_generator(gpib_address)
             wave_gen.send_voltage(waveform_gen, v_amplitude, frequency, channel)
 
             if v_amplitude > 3:
