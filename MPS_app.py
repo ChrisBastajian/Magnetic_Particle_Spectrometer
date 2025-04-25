@@ -69,9 +69,9 @@ class App(ctk.CTk):
         self.title_bar.file.place(x=start_x + btn_spacing * 0, y=btn_y, anchor='center')
 
         self.title_bar.calibrate = ctk.CTkButton(self.title_bar, text="Auto - Calibrate",
-                                                      font=('Arial', int(self.height * 0.018)),
-                                                      command=self.calibrate_M_V,
-                                                      width=btn_width, height=btn_height)
+                                                 font=('Arial', int(self.height * 0.018)),
+                                                 command=self.calibrate_H_V,
+                                                 width=btn_width, height=btn_height)
         self.title_bar.calibrate.place(x=start_x + btn_spacing * 1, y=btn_y, anchor='center')
 
         self.title_bar.background_sub = ctk.CTkButton(self.title_bar, text="Run Background Scan",
@@ -499,7 +499,7 @@ class App(ctk.CTk):
             zoom_checkbox.select()
 
     #####################functions to run data#####################
-    def calibrate_M_V(self):
+    def calibrate_H_V(self):
         self.H_cal = np.zeros(50)               #array to store the calibrated field
         self.V_cal = np.zeros(50)
 
