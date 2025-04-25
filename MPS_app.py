@@ -537,6 +537,7 @@ class App(ctk.CTk):
             v_amplitude += 0.05
             time.sleep(0.05)
 
+        wave_gen.turn_off(waveform_gen, channel)
         self.ax1.clear()
         self.ax1.set_title("H_V Calibrated", fontsize=11)
         self.ax1.set_xlabel("V", fontsize=10)
