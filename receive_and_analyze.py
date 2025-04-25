@@ -1,16 +1,20 @@
 import numpy as np
 import nidaqmx
 import wave_gen
-from nidaqmx.constants import AcquisitionType
+from nidaqmx.constants import AcquisitionType, Edge
 import matplotlib.pyplot as plt
 
 
-def receive_raw_voltage(daq_location, sample_rate, num_samples):
+def receive_raw_voltage(daq_location, sample_rate, n_samps, trigger_location=None,):
     with nidaqmx.Task() as task:
         task.ai_channels.add_ai_voltage_chan(daq_location)
-        task.timing.cfg_samp_clk_timing(sample_rate, samps_per_chan=num_samples)
-        voltage_raw = task.read(number_of_samples_per_channel= num_samples)
-        return(voltage_raw)
+        # Add a trigger source and set it to rising edge
+        if trigger_location is not None:
+            task.triggers.start_trigger.cfg_dig_edge_start_trig(trigger_location, Edge.RISING)
+
+        task.timing.cfg_samp_clk_timing(sample_rate, samps_per_chan=n_samps)
+        voltage_raw = task.read(number_of_samples_per_channel= n_samps)
+        return voltage_raw
 
 def DC_offset(current):
     power_supply = wave_gen.connect_power_supply('ASRL5::INSTR') #connecting by usb
@@ -68,7 +72,7 @@ def background_subtraction(daq_location, sense_location, sample_rate, num_sample
     return back_subtraction, signal_frequency, i_rms, sample_phase, signal
 
 #Used in MPS_app.py:
-def get_background(daq_location, source_location, sample_rate, num_periods, gpib_address,
+def get_background(daq_location, source_location, trigger_location, sample_rate, num_periods, gpib_address,
                    amplitude, frequency, channel, dc_current):
     num_pts_per_period = sample_rate/ frequency #Fs/F_drive
     num_samples = int(num_periods * num_pts_per_period)
@@ -120,7 +124,7 @@ def odd_harmonics(fourier, fourier_frequency, f_d, sample_rate):
     return fourier
 
 #USED IN MPS_app.py:
-def get_sample_signal(daq_location, sense_location, sample_rate, num_periods, gpib_address, amplitude,
+def get_sample_signal(daq_location, sense_location, trigger_location, sample_rate, num_periods, gpib_address, amplitude,
                       frequency, channel, dc_current, background_magnitude, isClean):
     arduino_COM = 'COM4'
     num_pts_per_period = sample_rate/ frequency #Fs/F_drive
@@ -134,11 +138,11 @@ def get_sample_signal(daq_location, sense_location, sample_rate, num_periods, gp
     wave_gen.send_voltage(waveform_generator, amplitude, frequency, channel)
 
     # Receive signal
-    signal_with_background = receive_raw_voltage(daq_location, sample_rate, num_samples)
+    signal_with_background = receive_raw_voltage(daq_location, sample_rate, num_samples, trigger_location)
 
     # Get the rms current
 
-    i_rms = get_rms_current(sense_location, fs=sample_rate, num_samples=num_samples)
+    i_rms = get_rms_current(sense_location, fs=sample_rate, num_samples=num_samples, trigger_location=trigger_location)
 
     #Turn off waveform generator and power supply and close:
     wave_gen.turn_off(waveform_generator, channel)
@@ -268,7 +272,7 @@ def normalize(input_array):
 
     return new_array
 
-def get_rms_current(daq_location, fs, num_samples):
+def get_rms_current(daq_location, fs, num_samples, trigger_location):
     # current sensing variables:
     Vcc = 5.0
     VQ = 0.5 * Vcc
@@ -278,7 +282,7 @@ def get_rms_current(daq_location, fs, num_samples):
     squares = np.zeros(num_samples)
     squares_added = 0
     i = 0
-    voltage = receive_raw_voltage(daq_location, fs, num_samples)
+    voltage = receive_raw_voltage(daq_location, fs, num_samples, trigger_location)
     squares_added = 0
 
     for i in range(num_samples):

@@ -41,7 +41,7 @@ class App(ctk.CTk):
         # DAQ Card Parameters
         self.daq_signal_channel = "Dev3/ai0"
         self.daq_current_channel = "Dev3/ai1"
-        self.daq_trigger_channel = "Dev3/pfi0"
+        self.daq_trigger_channel = "/Dev3/pfi0"
         self.sample_rate = 100000  #Hz
         self.num_periods = 100
 
@@ -408,7 +408,7 @@ class App(ctk.CTk):
         # DAQ Trigger Channel
         daq_trigger_label = ctk.CTkLabel(daq_frame, text="Trigger Channel", font=label_font)
         daq_trigger_label.place(x=daq_x_spacing, y=daq_y, anchor="center")
-        daq_trigger_option = ctk.CTkOptionMenu(daq_frame, values=["Dev3/pfi0", "Dev2/pfi0", "Dev1/pfi0"],
+        daq_trigger_option = ctk.CTkOptionMenu(daq_frame, values=["/Dev3/pfi0", "/Dev2/pfi0", "/Dev1/pfi0"],
                                                width=input_width, height=input_height)
         daq_trigger_option.set(self.daq_trigger_channel)
         daq_trigger_option.place(x=daq_x_spacing + input_width + self.width * 0.02, y=daq_y, anchor="center")
@@ -577,7 +577,7 @@ class App(ctk.CTk):
 
         # Call the background_subtraction function with appropriate arguments
         num_samples, background_magnitude, background_frequency, background_phase, daq_readout = analyze.get_background(
-            daq_signal, daq_source, sample_rate, num_periods, gpib_address, V_amplitude, frequency, channel,
+            daq_signal, daq_source,daq_trigger, sample_rate, num_periods, gpib_address, V_amplitude, frequency, channel,
             dc_current)
 
         recon, integral = analyze.reconstruct_and_integrate(num_samples, background_frequency, background_magnitude,
@@ -669,7 +669,7 @@ class App(ctk.CTk):
 
         # get the sample's data:
         num_samples, sample_magnitude, signal_frequency, signal_with_background, sample_phase, i_rms = analyze.get_sample_signal(
-            daq_signal, daq_source, sample_rate, num_periods, gpib_address, V_amplitude,
+            daq_signal, daq_source, daq_trigger, sample_rate, num_periods, gpib_address, V_amplitude,
             frequency, channel, dc_current, background_magnitude, self.only_odd_harmonics)
 
         sample_phase = np.abs(sample_magnitude)
@@ -858,7 +858,7 @@ class App(ctk.CTk):
 
             # get the sample's data:
             num_samples, sample_magnitude, signal_frequency, signal_with_background, sample_phase, i_rms = analyze.get_sample_signal(
-                daq_signal, daq_source, sample_rate, num_periods, gpib_address, v_amplitude,
+                daq_signal, daq_source, daq_trigger, sample_rate, num_periods, gpib_address, v_amplitude,
                 frequency, channel, dc_current, background_magnitude, False)
 
             self.frequency_array_magnitude = sample_magnitude
