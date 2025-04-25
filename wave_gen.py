@@ -24,6 +24,10 @@ def send_voltage(inst, voltage, frequency, channel):
         print(f"Error: {e}")
     time.sleep(0.5) #to receive better data (allows time for system to adapt)
 
+#Turn off:
+def turn_off(inst, channel):
+    inst.write(f"OUTPUT{channel} OFF")
+    inst.close()
 #example
 #waveform_generator = connect_waveform_generator(10)
 #send_voltage(waveform_generator, 0.1, 1000,1)
