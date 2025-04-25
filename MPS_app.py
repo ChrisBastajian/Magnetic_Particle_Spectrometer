@@ -19,7 +19,7 @@ class App(ctk.CTk):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.harmonics = None
-        self.slope = 6.1
+        self.slope = 10.339
         self.zoom_to_11_enabled = True
         self.frequency_array_magnitude_sample = None
         self.run = 0
@@ -753,7 +753,7 @@ class App(ctk.CTk):
         self.ax6.set_ylabel("M", fontsize=10)
         self.ax6.plot(H, integral, label='Run#' + str(self.run))
 
-        self.ax6.legend()
+        self.ax6.legend(loc='upper left')
         self.canvas6.draw()
 
     def run_live_frequency_array(self):
