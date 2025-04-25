@@ -57,8 +57,7 @@ def background_subtraction(daq_location, sense_location, sample_rate, num_sample
         back_subtraction, signal_frequency = -99, -99 #will be used as error values
 
     #Turn off waveform generator and close:
-    waveform_generator.write(f"OUTPUT{channel} OFF")
-    waveform_generator.close()
+    wave_gen.turn_off(waveform_generator, channel)
     sample_phase = sample_with_background_phase-background_phase
 
     # subtract background:
@@ -82,9 +81,9 @@ def get_background(daq_location, source_location, sample_rate, num_periods, gpib
     power_supply = DC_offset(dc_current)
 
     background = receive_raw_voltage(daq_location, sample_rate, num_samples) #receive the background (raw daq readout)
+
     #Turn the waveform generator and power supply off:
-    waveform_generator.write(f"OUTPUT{channel} OFF")
-    waveform_generator.close()
+    wave_gen.turn_off(waveform_generator, channel)
     if power_supply:
         wave_gen.turn_off_dc_output(power_supply)
         power_supply.close()
@@ -142,8 +141,7 @@ def get_sample_signal(daq_location, sense_location, sample_rate, num_periods, gp
     i_rms = get_rms_current(sense_location, fs=sample_rate, num_samples=num_samples)
 
     #Turn off waveform generator and power supply and close:
-    waveform_generator.write(f"OUTPUT{channel} OFF")
-    waveform_generator.close()
+    wave_gen.turn_off(waveform_generator, channel)
     if power_supply:
         wave_gen.turn_off_dc_output(power_supply)
         power_supply.close()
