@@ -835,25 +835,24 @@ class App(ctk.CTk):
         self.harmonics = {order: np.zeros(num_steps) for order in harmonic_orders}
         v_amplitude = 0 #start at 0...
 
+        sample_rate = 100000  # no need for more than that for the 11th harmonic
+        num_periods = int(self.num_periods)
+
+        daq_signal = self.daq_signal_channel
+        daq_source = self.daq_current_channel
+        daq_trigger = self.daq_trigger_channel
+        gpib_address = 10
+
+        frequency = float(self.frequency)
+
+        channel = int(self.channel)
+
+        # Get the dc current you want to run through the helmoholtz coils:
+        dc_current = float(self.dc_offset)  # Amps
+
         for l in range(num_steps):
-            sample_rate = 100000 #no need for more than that for the 11th harmonic
-            num_periods = int(self.num_periods)
-
-            daq_signal = self.daq_signal_channel
-            daq_source = self.daq_current_channel
-            daq_trigger = self.daq_trigger_channel
-            gpib_address = 10
-
-            frequency = float(self.frequency)
-
-            channel = int(self.channel)
-
-            # Get the dc current you want to run through the helmoholtz coils:
-            dc_current = float(self.dc_offset)  # Amps
-
             if v_amplitude > 4.5:
                 v_amplitude = 0
-
 
             background_magnitude = self.frequency_array_magnitude_background  # get the initial background not used here but will be implemented in the future
 
