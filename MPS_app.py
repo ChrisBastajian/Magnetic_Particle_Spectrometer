@@ -64,7 +64,7 @@ class App(ctk.CTk):
         # Place each button with consistent spacing
         self.title_bar.file = ctk.CTkButton(self.title_bar, text="File",
                                             font=('Arial', int(self.height * 0.018)),
-                                            command=self.open_dropdown,
+                                            command=self.open_files_dropdown,
                                             width=btn_width, height=btn_height)
         self.title_bar.file.place(x=start_x + btn_spacing * 0, y=btn_y, anchor='center')
 
@@ -244,7 +244,7 @@ class App(ctk.CTk):
         toolbar.update()
         toolbar.place(x=self.width//2, y=self.height*0.8, anchor='center')
 
-    def open_dropdown(self):
+    def open_files_dropdown(self):
         dropdown_window = ctk.CTkToplevel(self)
         dropdown_window.title("Select Option")
         dropdown_window.geometry("200x150")
@@ -849,7 +849,7 @@ class App(ctk.CTk):
 
         # Get the dc current you want to run through the helmoholtz coils:
         dc_current = float(self.dc_offset)  # Amps
-
+        power_supply = wave_gen.DC_offset(dc_current)
         for l in range(num_steps):
             if v_amplitude > 4.5:
                 v_amplitude = 0
@@ -859,7 +859,7 @@ class App(ctk.CTk):
             # get the sample's data:
             num_samples, sample_magnitude, signal_frequency, signal_with_background, sample_phase, i_rms = analyze.get_sample_signal(
                 daq_signal, daq_source, daq_trigger, sample_rate, num_periods, gpib_address, v_amplitude,
-                frequency, channel, dc_current, background_complex, False)
+                frequency, channel, dc_current=None, background_complex=background_complex, isClean=False)
 
             self.frequency_array_magnitude = sample_magnitude
 
@@ -873,6 +873,9 @@ class App(ctk.CTk):
 
             v_amplitude += 0.05
             time.sleep(0.01)
+        if power_supply:
+            wave_gen.turn_off_dc_output(power_supply)
+            power_supply.close()
         self.plot_harmonics()
 
     def plot_harmonics(self):

@@ -67,7 +67,7 @@ def send_dc_voltage(inst, voltage, current):
 
     except pyvisa.Error as e:
         print(f"Error: {e}")
-    time.sleep(0.2)  # Allow some time for the system to adapt
+    time.sleep(0.01)  # Allow some time for the system to adapt
 
 def turn_off_dc_output(inst):
     try:
@@ -88,3 +88,10 @@ def turn_off_dc_output(inst):
 
 #   turn_off_dc_output(power_supply)  # Turn off the output
 #   power_supply.close()
+
+def DC_offset(current):
+    power_supply = connect_power_supply('ASRL5::INSTR') #connecting via usb
+    voltage = 12 #volts since thisis the max of the power supply
+    if power_supply:
+        send_dc_voltage(power_supply, voltage, current)
+        return power_supply

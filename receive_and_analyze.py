@@ -58,13 +58,6 @@ def receive_raw_voltage(daq_location, sample_rate, n_samps, trigger_location=Non
         voltage_raw = task.read(number_of_samples_per_channel= n_samps)
         return voltage_raw
 
-def DC_offset(current):
-    power_supply = wave_gen.connect_power_supply('ASRL5::INSTR') #connecting via usb
-    voltage = 12 #volts since thisis the max of the power supply
-    if power_supply:
-        wave_gen.send_dc_voltage(power_supply, voltage, current)
-        return power_supply
-
 def get_background(daq_location, source_location, trigger_location, sample_rate, num_periods, gpib_address,
                    amplitude, frequency, channel, dc_current):
     num_pts_per_period = sample_rate/ frequency #Fs/F_drive
@@ -75,7 +68,7 @@ def get_background(daq_location, source_location, trigger_location, sample_rate,
     wave_gen.send_voltage(waveform_generator, amplitude, frequency, channel)
 
     #Connect to the DC power supply and send the current through the helmholtz coils:
-    power_supply = DC_offset(dc_current)
+    power_supply = wave_gen.DC_offset(dc_current)
 
     background = receive_raw_voltage(daq_location, sample_rate, num_samples, trigger_location) #receive the background (raw daq readout)
 
@@ -119,7 +112,9 @@ def get_sample_signal(daq_location, sense_location, trigger_location, sample_rat
     num_samples = int(num_periods * num_pts_per_period)
 
     #Connect to the DC power supply and send the current through the helmholtz coils:
-    power_supply = DC_offset(dc_current)
+    power_supply = None
+    if dc_current is not None:
+        power_supply = wave_gen.DC_offset(dc_current)
 
     #connect waveform generator and send signal:
     waveform_generator = wave_gen.connect_waveform_generator(gpib_address)
@@ -133,7 +128,7 @@ def get_sample_signal(daq_location, sense_location, trigger_location, sample_rat
 
     #Turn off waveform generator and power supply and close:
     wave_gen.turn_off(waveform_generator, channel)
-    if power_supply:
+    if power_supply is not None:
         wave_gen.turn_off_dc_output(power_supply)
         power_supply.close()
 
