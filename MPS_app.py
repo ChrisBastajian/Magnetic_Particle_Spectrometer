@@ -1022,7 +1022,7 @@ class App(ctk.CTk):
                 'xxxx_frequency_array_phase = phase θn = arctan(bn/an)\n'
                 'xxxx_frequency_array_frequency = frequency array for specific "xxxx" component'
             )
-            data['Instructions'] = instructions
+            data['instructions'] = instructions
 
             parameters = {
                 'mode': getattr(self, 'mode', None),
