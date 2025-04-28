@@ -31,7 +31,7 @@ class App(ctk.CTk):
         self.configure(fg="#333333")
 
         # Initialize parameters with default values
-        self.ac_amplitude = 0.1  # Default AC Amplitude (V)
+        self.ac_amplitude = 25  # Default AC Amplitude (mT)
         self.frequency = 1000  # Default Frequency (Hz)
         self.channel = "1"
         self.dc_offset = 0
@@ -528,7 +528,7 @@ class App(ctk.CTk):
 
 
             # get the sample's data:
-            i_rms = analyze.get_rms_current(current_source, sample_rate, num_periods)
+            i_rms = analyze.get_rms_current(current_source, sample_rate, num_periods, daq_trigger)
 
 
             # get the magnetization from the detected rms current:
@@ -576,7 +576,7 @@ class App(ctk.CTk):
         dc_current = float(self.dc_offset)  # Amps
 
         # Call the background_subtraction function with appropriate arguments
-        num_samples, background_magnitude, background_frequency, background_phase, daq_readout = analyze.get_background(
+        num_samples, background_magnitude, background_frequency, background_phase, daq_readout, background_complex = analyze.get_background(
             daq_signal, daq_source,daq_trigger, sample_rate, num_periods, gpib_address, V_amplitude, frequency, channel,
             dc_current)
 
@@ -584,7 +584,10 @@ class App(ctk.CTk):
                                                             frequency)
 
         # Store the values in the self object to later have the option of saving them as .mat files
-        self.frequency_array_magnitude_background = background_magnitude
+        self.background_frequency_array_magnitude = background_magnitude
+        self.background_frequency_array_frequency = background_frequency
+        self.background_frequency_array_phase = background_phase
+        self.background_frequency_array_complex = background_complex
         self.frequency_back = background_frequency
         self.phase = background_phase
         self.recon = recon
@@ -663,24 +666,21 @@ class App(ctk.CTk):
         # Get the dc current you want to run through the helmoholtz coils:
         dc_current = float(self.dc_offset)  # Amps
 
-        background_magnitude = self.frequency_array_magnitude_background  # will be subtracted later when we call get_sample_signal function
-
-
+        background_complex = self.background_frequency_array_complex
 
         # get the sample's data:
         num_samples, sample_magnitude, signal_frequency, signal_with_background, sample_phase, i_rms = analyze.get_sample_signal(
             daq_signal, daq_source, daq_trigger, sample_rate, num_periods, gpib_address, V_amplitude,
-            frequency, channel, dc_current, background_magnitude, self.only_odd_harmonics)
+            frequency, channel, dc_current, background_complex, self.only_odd_harmonics)
 
         sample_phase = np.abs(sample_magnitude)
         self.signal_with_background = signal_with_background
 
         self.frequency_array_magnitude_sample = sample_magnitude
 
-        # reconstruct the waveform over one perios and get the magnetization (integral)
+        # reconstruct the waveform over one period and get the magnetization (integral)
         recon, integral = analyze.reconstruct_and_integrate(num_samples, signal_frequency, sample_magnitude,
-                                                            frequency)  # will eventually
-        # need to add phase parameter
+                                                            frequency)
 
         self.magnetization = integral  # to save to .mat file
 
@@ -744,8 +744,8 @@ class App(ctk.CTk):
         self.ax5.set_xlabel("H", fontsize=10)
         self.ax5.set_ylabel("dM/dH", fontsize=10)
         # Need half of a period for MH and dM/dH:
-        integral = integral[:len(integral) // 2]
-        H = H[:len(H) // 2]
+        #integral = integral[:len(integral) // 2]
+        #H = H[:len(H) // 2]
         dMdH = analyze.dMdH(integral, H)
 
         self.ax5.plot(H, dMdH)
@@ -796,7 +796,7 @@ class App(ctk.CTk):
                 voltage_raw = task.read(number_of_samples_per_channel=num_samples)  # read pure daq readout
 
                 # Get the fourier data
-                fourier_magnitude, fourier_frequency = analyze.fourier(voltage_raw, sample_rate, num_samples)
+                fourier_magnitude, fourier_frequency, phase, fourier_amplitude = analyze.fourier(voltage_raw, sample_rate, num_samples)
                 fourier_magnitude = np.abs(fourier_magnitude)
 
                 self.update_plot(fourier_frequency, fourier_magnitude, sample_rate)
@@ -827,9 +827,9 @@ class App(ctk.CTk):
         self.waveform_generator.close()
 
     def auto_mode(self): #To record harmonics and compare them
-        num_steps = 70 #arrays will be of size 70
+        num_steps = 50 #arrays will be of size 50
         harmonic_orders = list(range(1, 12))  #2nd to 11th
-        harmonic_indices = [50, 150, 250, 350, 450, 550, 650, 750, 850, 950, 1050]
+        harmonic_indices = [100, 200, 300,400, 500, 600, 700, 800, 900, 1000, 1100]
 
         self.max_H_field = np.zeros(num_steps)
         self.harmonics = {order: np.zeros(num_steps) for order in harmonic_orders}
@@ -854,12 +854,12 @@ class App(ctk.CTk):
             if v_amplitude > 4.5:
                 v_amplitude = 0
 
-            background_magnitude = self.frequency_array_magnitude_background  # get the initial background not used here but will be implemented in the future
+            background_complex = self.background_frequency_array_complex
 
             # get the sample's data:
             num_samples, sample_magnitude, signal_frequency, signal_with_background, sample_phase, i_rms = analyze.get_sample_signal(
                 daq_signal, daq_source, daq_trigger, sample_rate, num_periods, gpib_address, v_amplitude,
-                frequency, channel, dc_current, background_magnitude, False)
+                frequency, channel, dc_current, background_complex, False)
 
             self.frequency_array_magnitude = sample_magnitude
 
@@ -930,8 +930,8 @@ class App(ctk.CTk):
                 data['magnetization'] = self.magnetization
             if hasattr(self, 'H_field') and self.H_field is not None:
                 data['magnetic_field'] = self.H_field
-            if hasattr(self, 'frequency_array_magnitude_background') and self.frequency_array_magnitude_background is not None:
-                data['background_frequency_array'] = self.frequency_array_magnitude_background
+            if hasattr(self, 'background_frequency_array_magnitude') and self.background_frequency_array_magnitude is not None:
+                data['background_frequency_array'] = self.background_frequency_array_magnitude
             if hasattr(self, 'frequency_array_magnitude_sample') and self.frequency_array_magnitude_sample is not None:
                 data['sample_frequency_array'] = self.frequency_array_magnitude_sample
             if hasattr(self, 'max_H_field') and self.max_H_field is not None:
