@@ -6,6 +6,7 @@ import numpy as np
 import wave_gen
 import nidaqmx
 import time
+import threading
 
 from scipy.io import savemat
 from matplotlib.backends._backend_tk import NavigationToolbar2Tk
@@ -18,10 +19,12 @@ ctk.set_default_color_theme("dark-blue")
 class App(ctk.CTk):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.i_dc = None
+        self.mode = None
         self.harmonics = None
         self.slope = 10.339
         self.zoom_to_11_enabled = True
-        self.frequency_array_magnitude_sample = None
+        self.sample_frequency_array_magnitude = None
         self.run = 0
         self.title("MPS App")
         self.width = self.winfo_screenwidth()
@@ -100,7 +103,7 @@ class App(ctk.CTk):
 
         self.title_bar.auto_mode = ctk.CTkButton(self.title_bar, text='Automated Mode',
                                                  font=('Arial', int(self.height * 0.018)),
-                                                 command=self.auto_mode,
+                                                 command=self.open_auto_mode_dropdown,
                                                  width=btn_width, height=btn_height)
         self.title_bar.auto_mode.place(x=start_x + btn_spacing * 6, y=btn_y, anchor='center')
 
@@ -498,6 +501,33 @@ class App(ctk.CTk):
         if self.zoom_to_11_enabled:
             zoom_checkbox.select()
 
+    def open_auto_mode_dropdown(self):
+        dropdown_window = ctk.CTkToplevel(self)
+        dropdown_window.title("Auto Mode")
+        dropdown_window.geometry("200x150")
+
+        dropdown_window.attributes("-topmost", True)
+        frame = ctk.CTkFrame(dropdown_window)
+        frame.pack(fill="both", expand=True)
+
+        scrollbar = ctk.CTkScrollbar(frame)
+        scrollbar.pack(side="right", fill="y")
+
+        listbox = Listbox(frame, height=6, yscrollcommand=scrollbar.set)
+        options = ['Run with static AC', 'Run with static DC']
+        for option in options:
+            listbox.insert("end", option)
+        listbox.pack(fill="both", expand=True)
+        scrollbar.configure(command=listbox.yview)
+
+        def on_select(event):
+            selected = listbox.get(listbox.curselection())
+            if selected == "Run with static AC":
+                threading.Thread(target=self.auto_mode_static_ac).start()
+            elif selected == "Run with static DC":
+                threading.Thread(target=self.auto_mode_static_dc).start()
+
+        listbox.bind("<<ListboxSelect>>", on_select)
     #####################functions to run data#####################
     def calibrate_H_V(self):
         self.H_cal = np.zeros(50)               #array to store the calibrated field
@@ -669,14 +699,17 @@ class App(ctk.CTk):
         background_complex = self.background_frequency_array_complex
 
         # get the sample's data:
-        num_samples, sample_magnitude, signal_frequency, signal_with_background, sample_phase, i_rms = analyze.get_sample_signal(
+        (num_samples, sample_magnitude, signal_frequency, signal_with_background, sample_phase, i_rms,
+         signal_with_background_complex, sample_complex) = analyze.get_sample_signal(
             daq_signal, daq_source, daq_trigger, sample_rate, num_periods, gpib_address, V_amplitude,
             frequency, channel, dc_current, background_complex, self.only_odd_harmonics)
 
         sample_phase = np.abs(sample_magnitude)
         self.signal_with_background = signal_with_background
-
-        self.frequency_array_magnitude_sample = sample_magnitude
+        self.signal_frequency_array_amplitude = signal_with_background_complex #this is the sample with its background (raw fourrier transform)
+        self.sample_frequency_array_magnitude = sample_magnitude
+        self.sample_frequency_array_amplitude = sample_complex
+        self.sample_frequency_array_frequency = signal_frequency #frequency array of the frequencies (considers sampling rate)
 
         # reconstruct the waveform over one period and get the magnetization (integral)
         recon, integral = analyze.reconstruct_and_integrate(num_samples, signal_frequency, sample_magnitude,
@@ -826,7 +859,8 @@ class App(ctk.CTk):
         self.on_off = 0  # set the state to off
         self.waveform_generator.close()
 
-    def auto_mode(self): #To record harmonics and compare them
+    def auto_mode_static_dc(self): #To record harmonics and compare them
+        self.mode = "Static DC with varying ac."
         num_steps = 50 #arrays will be of size 50
         harmonic_orders = list(range(1, 12))  #2nd to 11th
         harmonic_indices = [100, 200, 300,400, 500, 600, 700, 800, 900, 1000, 1100]
@@ -849,6 +883,8 @@ class App(ctk.CTk):
 
         # Get the dc current you want to run through the helmoholtz coils:
         dc_current = float(self.dc_offset)  # Amps
+
+        #check which supply remains static:
         power_supply = wave_gen.DC_offset(dc_current)
         for l in range(num_steps):
             if v_amplitude > 4.5:
@@ -857,7 +893,8 @@ class App(ctk.CTk):
             background_complex = self.background_frequency_array_complex
 
             # get the sample's data:
-            num_samples, sample_magnitude, signal_frequency, signal_with_background, sample_phase, i_rms = analyze.get_sample_signal(
+            num_samples, sample_magnitude, signal_frequency, signal_with_background, sample_phase, i_rms,\
+                signal_with_background_complex, sample_complex = analyze.get_sample_signal(
                 daq_signal, daq_source, daq_trigger, sample_rate, num_periods, gpib_address, v_amplitude,
                 frequency, channel, dc_current=None, background_complex=background_complex, isClean=False)
 
@@ -876,26 +913,88 @@ class App(ctk.CTk):
         if power_supply:
             wave_gen.turn_off_dc_output(power_supply)
             power_supply.close()
-        self.plot_harmonics()
+        self.plot_harmonics(field=self.max_H_field,dc_static=True)
 
-    def plot_harmonics(self):
+    def auto_mode_static_ac(self):
+        self.mode = "Static ac with varying DC."
+        num_steps = 200 # arrays will be of size 200
+        harmonic_orders = list(range(1, 12))  # 2nd to 11th
+        harmonic_indices = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100]
+
+        self.i_dc = np.zeros(num_steps)
+        self.harmonics = {order: np.zeros(num_steps) for order in harmonic_orders}
+        v_amplitude = 0  # start at 0...
+
+        sample_rate = 100000  # no need for more than that for the 11th harmonic
+        num_periods = int(self.num_periods)
+
+        daq_signal = self.daq_signal_channel
+        daq_source = self.daq_current_channel
+        daq_trigger = self.daq_trigger_channel
+        gpib_address = 10
+
+        frequency = float(self.frequency)
+
+        channel = int(self.channel)
+        v_amplitude = (1 / self.slope) * float(self.ac_amplitude)
+        if v_amplitude > 4.5:
+            v_amplitude = 0
+
+        # Connect the waveform generator and send a signal for background measurement
+        waveform_generator = wave_gen.connect_waveform_generator(gpib_address)
+        wave_gen.send_voltage(waveform_generator, v_amplitude, frequency, channel)
+
+        # dc current starting at 0:
+        dc_current = 0
+        power_supply = wave_gen.DC_offset(dc_current)
+        for l in range(num_steps):
+            wave_gen.send_dc_voltage(power_supply, voltage=12, current=dc_current)
+            background_complex = self.background_frequency_array_complex
+
+            # get the sample's data:
+            (num_samples, sample_magnitude, signal_frequency, signal_with_background, sample_phase, i_rms,
+             signal_with_background_complex, sample_complex) = analyze.get_sample_signal(
+                daq_signal, daq_source, daq_trigger, sample_rate, num_periods, gpib_address, amplitude=None,
+                frequency=frequency, channel=channel, dc_current=None, background_complex=background_complex,
+                isClean=False)
+
+            self.frequency_array_magnitude = sample_magnitude
+
+            self.i_dc[l] = dc_current
+
+            # Store all harmonics
+            for i, order in enumerate(harmonic_orders):
+                self.harmonics[order][l] = sample_magnitude[harmonic_indices[i]]
+
+            dc_current += 0.05
+            time.sleep(0.01)
+        wave_gen.turn_off_dc_output(power_supply)
+        power_supply.close()
+        wave_gen.turn_off(waveform_generator, channel)
+        self.plot_harmonics(field = self.i_dc ,dc_static=False)
+
+    def plot_harmonics(self, field, dc_static=False):
         self.ax1.clear()
         self.ax2.clear()
+        if dc_static:
+            field_txt = "μo H (mT)"
+        else:
+            field_txt = "I_DC (A)"
 
         self.ax1.set_title("Odd Harmonics vs Field", fontsize=11)
-        self.ax1.set_xlabel("H", fontsize=10)
+        self.ax1.set_xlabel(field_txt, fontsize=10)
         self.ax1.set_ylabel("Harmonics", fontsize=10)
 
         self.ax2.set_title("Even Harmonics vs Field", fontsize=11)
-        self.ax2.set_xlabel("H", fontsize=10)
+        self.ax2.set_xlabel(field_txt, fontsize=10)
         self.ax2.set_ylabel("Harmonics", fontsize=10)
 
         for order in [3, 5, 7, 9, 11]: #odd harmonics
-            self.ax1.plot(self.max_H_field, self.harmonics[order],
+            self.ax1.plot(field, self.harmonics[order],
                           label=f'{order}rd Harmonic' if order == 3 else f'{order}th Harmonic')
 
         for order in [2, 4, 6, 8, 10]: #Even Harmonics
-            self.ax2.plot(self.max_H_field, self.harmonics[order],
+            self.ax2.plot(field, self.harmonics[order],
                           label=f'{order}nd Harmonic' if order == 2 else f'{order}th Harmonic')
         self.ax1.legend()
         self.ax2.legend()
@@ -913,7 +1012,20 @@ class App(ctk.CTk):
 
             data = {} #empty dictionary to hold the data
 
+            instructions = (
+                'Here is the naming convention used for the variables:'
+                'background = background\n'
+                'signal = sample with background\n'
+                'sample = signal - background\n'
+                'xxxx_frequency_array_amplitude = complex coefficients an and bn\n'
+                'xxxx_frequency_array_magnitude = magnitude Cn = sqrt(an^2 + bn^2)\n'
+                'xxxx_frequency_array_phase = phase θn = arctan(bn/an)\n'
+                'xxxx_frequency_array_frequency = frequency array for specific "xxxx" component'
+            )
+            data['Instructions'] = instructions
+
             parameters = {
+                'mode': getattr(self, 'mode', None),
                 'ac_amplitude': getattr(self, 'ac_amplitude', None),
                 'frequency': getattr(self, 'frequency', None),
                 'channel': getattr(self, 'channel', None),
@@ -926,17 +1038,28 @@ class App(ctk.CTk):
                 'sample_rate': getattr(self, 'sample_rate', None),
                 'num_periods': getattr(self, 'num_periods', None)
             }
-            data['parameters'] = parameters
+            clean_parameters = {k: v for k, v in parameters.items() if v is not None}
+            data['parameters'] = clean_parameters
 
             # Check and add each attribute if it exists
             if hasattr(self, 'magnetization') and self.magnetization is not None:
                 data['magnetization'] = self.magnetization
             if hasattr(self, 'H_field') and self.H_field is not None:
                 data['magnetic_field'] = self.H_field
+            if hasattr(self, 'sample_frequency_array_frequency') and self.sample_frequency_array_frequency is not None:
+                data['sample_frequency_array_frequency'] = self.sample_frequency_array_frequency
             if hasattr(self, 'background_frequency_array_magnitude') and self.background_frequency_array_magnitude is not None:
-                data['background_frequency_array'] = self.background_frequency_array_magnitude
-            if hasattr(self, 'frequency_array_magnitude_sample') and self.frequency_array_magnitude_sample is not None:
-                data['sample_frequency_array'] = self.frequency_array_magnitude_sample
+                data['background_frequency_array_magnitude'] = self.background_frequency_array_magnitude
+            if hasattr(self, 'background_frequency_array_phase') and self.background_frequency_array_phase is not None:
+                data['background_frequency_array_phase'] = self.background_frequency_array_phase
+            if hasattr(self, 'background_frequency_array_complex') and self.background_frequency_array_complex is not None:
+                data['background_frequency_array_amplitude'] = self.background_frequency_array_complex
+            if hasattr(self, 'signal_frequency_array_amplitude') and self.signal_frequency_array_amplitude is not None:
+                data['signal_frequency_array_amplitude'] = self.signal_frequency_array_amplitude
+            if hasattr(self, 'sample_frequency_array_magnitude') and self.sample_frequency_array_magnitude is not None:
+                data['sample_frequency_array_magnitude'] = self.sample_frequency_array_magnitude
+            if hasattr(self, 'sample_frequency_array_amplitude') and self.sample_frequency_array_amplitude is not None:
+                data['sample_frequency_array_amplitude'] = self.sample_frequency_array_amplitude
             if hasattr(self, 'max_H_field') and self.max_H_field is not None:
                 data['H_field_harmonic'] = self.max_H_field
             if hasattr(self, 'H_field_total') and self.H_field_total:
@@ -945,8 +1068,10 @@ class App(ctk.CTk):
                 data['background'] = self.background
             if hasattr(self, 'signal_with_background') and self.signal_with_background is not None:
                 data['signal_with_background'] = self.signal_with_background
+            if hasattr(self, 'i_dc') and self.i_dc is not None:
+                data['i_dc'] = self.i_dc
 
-            if hasattr(self, 'harmonics'):
+            if hasattr(self, 'harmonics') and self.harmonics is not None:
                 odd_harmonics = {order: self.harmonics[order] for order in [1, 3, 5, 7, 9, 11] if
                                  self.harmonics[order] is not None}
                 even_harmonics = {order: self.harmonics[order] for order in [2, 4, 6, 8, 10] if

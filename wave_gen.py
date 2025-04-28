@@ -22,7 +22,7 @@ def send_voltage(inst, voltage, frequency, channel):
         print(f"Output on Channel {channel} enabled with synchronization and triggering.")
     except pyvisa.Error as e:
         print(f"Error: {e}")
-    time.sleep(0.05) #to receive better data (allows time for system to adapt)
+    time.sleep(0.01) #to receive better data (allows time for system to adapt)
 
 #Turn off:
 def turn_off(inst, channel):
