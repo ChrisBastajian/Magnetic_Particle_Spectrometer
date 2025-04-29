@@ -29,12 +29,12 @@ To run this application, you'll need Python 3.7+ installed along with the requir
 
 4. Configure your waveform generator and power supply by running:
 
-```python
-import pyvisa
-
-rm = pyvisa.ResourceManager()
-print(rm.list_resources())
-```
+    ```python
+    import pyvisa
+    
+    rm = pyvisa.ResourceManager()
+    print(rm.list_resources())
+    ```
 5. Note that the waveform generator **KEYSIGHT 33500B** is connected via GPIB connection. The power supply **GWINSTEK PFR-100L** is connected via usb. More information can be found in the 'wave_gen.py' script
 ---
 ## Buttons and Their Functionality
