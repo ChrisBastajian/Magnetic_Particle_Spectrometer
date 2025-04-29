@@ -88,13 +88,13 @@ print(rm.list_resources())
    - **Usage**: 
      - The arrays for the spectrums, raw daq readouts, harmonics data and more will be saved in a .mat file with parameters as well.
      - The following conventional names are utilized for the saved data:
-        background = background
-        signal = sample with background
-        sample = signal - background
-        xxxx_frequency_array_amplitude = complex coefficients an and bn
-        xxxx_frequency_array_magnitude = magnitude Cn = sqrt(an^2 + bn^2)
-        xxxx_frequency_array_phase = phase θn = arctan(bn/an)
-        xxxx_frequency_array_frequency = frequency array for specific "xxxx" component
+        -background = background
+        -signal = sample with background
+        -sample = signal - background
+        -xxxx_frequency_array_amplitude = complex coefficients an and bn
+        -xxxx_frequency_array_magnitude = magnitude Cn = sqrt(an^2 + bn^2)
+        -xxxx_frequency_array_phase = phase θn = arctan(bn/an)
+        -xxxx_frequency_array_frequency = frequency array for specific "xxxx" component
 
 ---
 
