@@ -34,12 +34,12 @@ class App(ctk.CTk):
         self.configure(fg="#333333")
 
         # Initialize parameters with default values
-        self.ac_amplitude = 25  # Default AC Amplitude (mT)
+        self.ac_amplitude = 10  # Default AC Amplitude (mT)
         self.frequency = 1000  # Default Frequency (Hz)
         self.channel = "1"
         self.dc_offset = 0
         self.only_odd_harmonics = False
-        self.triggering_enabled = False
+        self.triggering_enabled = True
 
         # DAQ Card Parameters
         self.daq_signal_channel = "Dev3/ai0"
@@ -59,7 +59,7 @@ class App(ctk.CTk):
         btn_y = self.height // 36
 
         # Total number of buttons (including File)
-        num_buttons = 8
+        num_buttons = 7
         total_spacing_width = self.width * 0.8  # spread buttons across 80% of window
         start_x = (self.width - total_spacing_width) / 2
         btn_spacing = total_spacing_width / (num_buttons - 1)
@@ -106,12 +106,6 @@ class App(ctk.CTk):
                                                  command=self.open_auto_mode_dropdown,
                                                  width=btn_width, height=btn_height)
         self.title_bar.auto_mode.place(x=start_x + btn_spacing * 6, y=btn_y, anchor='center')
-
-        self.title_bar.get_stepped_data = ctk.CTkButton(self.title_bar, text="Run Stepped",
-                                                        font=('Arial', int(self.height * 0.018)),
-                                                        command=self.run_stepped,
-                                                        width=btn_width, height=btn_height)
-        self.title_bar.get_stepped_data.place(x=start_x + btn_spacing * 7, y=btn_y, anchor='center')
 
         ############### Figures ########################
         x_fig = 5.5
@@ -269,11 +263,11 @@ class App(ctk.CTk):
         def on_select(event):
             selected = listbox.get(listbox.curselection())
             if selected == "Setup Analysis":
-                self.open_setup_analysis_window()
+                threading.Thread(target=self.open_setup_analysis_window).start()
             elif selected == "Save Results":
-                self.save_results()
+                threading.Thread(target=self.save_results).start()
             elif selected == "Plot Settings":
-                self.open_plot_settings_window()
+                threading.Thread(target=self.open_plot_settings_window).start()
 
         listbox.bind("<<ListboxSelect>>", on_select)
 
@@ -309,7 +303,7 @@ class App(ctk.CTk):
         amp_label = ctk.CTkLabel(small_frame, text="AC Amplitude (mT)", font=label_font)
         amp_label.place(x=x_spacing, y=y, anchor="center")
         amp_entry = ctk.CTkEntry(small_frame, width=input_width, height=input_height)
-        amp_entry.insert(0, "0.1")
+        amp_entry.insert(0, str(self.ac_amplitude))
         amp_entry.place(x=x_spacing + input_width + self.width * 0.02, y=y, anchor="center")
         y += self.height * 0.06
 
@@ -332,7 +326,7 @@ class App(ctk.CTk):
         dc_label = ctk.CTkLabel(small_frame, text="DC offset \"z\"", font=label_font)
         dc_label.place(x=x_spacing, y=y, anchor="center")
         dc_entry = ctk.CTkEntry(small_frame, width=input_width, height=input_height)
-        dc_entry.insert(0, "0")
+        dc_entry.insert(0, str(self.dc_offset))
         dc_entry.place(x=x_spacing + input_width + self.width * 0.02, y=y, anchor="center")
         y += self.height * 0.06
 
@@ -344,6 +338,12 @@ class App(ctk.CTk):
         no_radio = ctk.CTkRadioButton(small_frame, text="No", fg_color='blue', hover_color="white", font=label_font,
                                       command=yes_radio.deselect)
         no_radio.place(x=x_spacing + input_width + self.width * 0.1, y=y, anchor="center")
+
+        if self.only_odd_harmonics: #initial values
+            yes_radio.select()
+        else:
+            no_radio.select()
+
         y += self.height * 0.06
 
         # Triggering (Yes/No)
@@ -356,6 +356,12 @@ class App(ctk.CTk):
                                            font=label_font,
                                            command=trig_yes_radio.deselect)
         trig_no_radio.place(x=x_spacing + input_width + self.width * 0.1, y=y, anchor="center")
+
+        if self.triggering_enabled:
+            trig_yes_radio.select()
+        else:
+            trig_no_radio.select()
+
         y += self.height * 0.06
 
         def deselect_no():
@@ -673,6 +679,8 @@ class App(ctk.CTk):
         self.canvas4.draw()
 
     def run_with_sample(self):
+        self.mode = "standard sample"
+
         # Turn the live_frequency display off if if it's on by switching state to 0:
         self.on_off = 0
 
@@ -1000,9 +1008,6 @@ class App(ctk.CTk):
         self.ax2.legend()
         self.canvas1.draw()
         self.canvas2.draw()
-
-    def run_stepped(self):
-        return
 
     ####################### function to save results #########################
     def save_results(self):
