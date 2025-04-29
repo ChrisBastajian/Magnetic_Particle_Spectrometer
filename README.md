@@ -35,50 +35,104 @@ import pyvisa
 rm = pyvisa.ResourceManager()
 print(rm.list_resources())
 ```
-
-    Note that the waveform generator **KEYSIGHT 33500B** is connected via GPIB connection. The power supply **GWINSTEK PFR-100L** is connected via usb. More information can be found about these in the wave_gen.py script
+5. Note that the waveform generator **KEYSIGHT 33500B** is connected via GPIB connection. The power supply **GWINSTEK PFR-100L** is connected via usb. More information can be found in the 'wave_gen.py' script
 ---
 ## Buttons and Their Functionality
 
-### 1. **File Button**
-   - **Description**: Opens a dropdown menu for file management (e.g., load/save data).
-   - **Function**: When clicked, this button triggers the file handling interface, where the user can load or save data files.
+### 1. File Button
+   - **Description**: This button opens a dropdown menu for system and file management options.
+   - **Functionality**: When clicked, it displays several options for the user to choose from:
+     - **Save Results**
+     - **Setup Analysis**
+     - **Plot Settings**
+   - **Usage**: 
+     - The dropdown allows users to navigate and choose which action they want to perform.
+
+#### 1.10. Dropdown Options:
+   - **Save Results**: Allows users to save their results after performing an operation.
+   - **Setup Analysis**: Opens a new window where users can input parameters for waveform generation, like amplitude, frequency, and triggering settings.
+   - **Plot Settings**: Opens a settings window for adjusting plot settings, such as enabling zoom to 11 harmonics.
+
+##### 1.11. Setup Analysis Window
+   - **Description**: A window that allows the user to change multiple parameters related to the excitation (Waveform Parameters) and the aquisition (DAQ Card Input Channels).
+   - **Functionality**:
+     - The Waveform Parameter Frame Offers the following options:
+       - **AC Amplitude**: Set the amplitude of the waveform (mT).
+       - **Frequency**: Set the frequency of the waveform (Hz).
+       - **Channel**: Select which waveform generator channel to apply the waveform settings.
+       - **DC Offset**: Set the DC biasing field that is applied by Hemholtz Coils by setting the current (A).
+       - **Harmonics**: Choose whether to include the full spectrum or to only look at odd harmonics.
+       - **Triggering**: Choose whether to enable triggering for waveform generation.
+     - The DAQ Card Input Channels Frame Offers the following options:
+       - **Signal Channel**: Set which channel to select for signal reception.
+       - **Current Channel**: Set the Channel which the current sensor is connected to.
+       - **Trigger Channel**: Set the channel that handles triggering based on a square signal with rising edge detection.
+       - **Sample Rate**: Adjust the sample rate of data aquisition.
+       - **Num Periods**: Select the number of periods that you want to be recorded (this increases the number of samples). 
+
+   - **Usage**: 
+     - After adjusting the settings, users can click a **Save Settings** button to store their configurations.
+
+###### 1.12. Plot Settings Window
+   - **Description**: A window for adjusting plot-related settings, such as zoom functionality.
+   - **Functionality**:
+     - Users can enable or disable the zoom feature for plotting the first 11 harmonics of the waveform.
+     - This allows you to zoom into the fourrier frequency spectrum at all times for more convenience.
+
+##### 1.13. Saving Settings and Parameters
+   - **Description**: After configuring the waveform and plot settings, users can save their changes.
+   - **Functionality**: 
+     -When you are done running your experiment. Click on this button to save the data that was recorded.
+     -Make sure you do this for every sample you test (after clicking 'Run With Sample')
+
+   - **Usage**: 
+     - The arrays for the spectrums, raw daq readouts, harmonics data and more will be saved in a .mat file with parameters as well.
+     - The following conventional names are utilized for the saved data:
+        background = background
+        signal = sample with background
+        sample = signal - background
+        xxxx_frequency_array_amplitude = complex coefficients an and bn
+        xxxx_frequency_array_magnitude = magnitude Cn = sqrt(an^2 + bn^2)
+        xxxx_frequency_array_phase = phase θn = arctan(bn/an)
+        xxxx_frequency_array_frequency = frequency array for specific "xxxx" component
 
 ---
 
 ### 2. **Auto - Calibrate Button**
-   - **Description**: Initiates the automatic calibration process.
-   - **Function**: This button starts the calibration routine for the spectrometer, adjusting the system to ensure accurate measurements. Typically, this involves adjusting the magnetic field or correcting signal distortion.
+   - **Description**: Initiates the automatic calibration process between the voltage (Vac) and magnetic field (μoH).
+   - **Function**: When clicked, the system will send test signals from the waveform generator and calibrate based on the
+                 current, I, being sent to the drive coil.
 
 ---
 
 ### 3. **Run Background Scan Button**
    - **Description**: Starts the background scan process.
-   - **Function**: This button runs a background scan to gather baseline data that can be used to subtract noise from measurements during active data collection.
+   - **Function**: This button runs a background scan to gather baseline data containing noise that is later subtracted to get a pure sample-based signal.
 
 ---
 
 ### 4. **Run With Sample Button**
    - **Description**: Begins the data acquisition process with a sample present.
-   - **Function**: This button starts the spectrometer in "sample mode" to take measurements when a sample is present. It collects data based on predefined parameters such as frequency and amplitude.
+   - **Function**: This button starts the spectrometer in "sample mode" to take measurements when a sample is present. Run this method after a background scan is established.
 
 ---
 
 ### 5. **Run Live Frequency Array Button**
-   - **Description**: Runs a live frequency array scan to analyze the frequency response of the system.
-   - **Function**: This button runs a live scan of the frequency spectrum, allowing the user to view real-time data on the frequency array. Useful for observing how the system responds to varying frequencies.
+   - **Description**: Runs a live frequency array scan to adjust the cancellation coil as necessary.
+   - **Function**: This button runs a live scan of the frequency spectrum, allowing the user to view real-time data on the frequency array.
+                   Use this to manually turn/ adjust the cancellation coil as required and cancel the background before running other modes
 
 ---
 
 ### 6. **Stop Live Acquisition Button**
    - **Description**: Stops the ongoing live data acquisition.
-   - **Function**: When clicked, this button halts the live data acquisition process, stopping the ongoing signal measurement and analysis.
+   - **Function**: When clicked, this button the live frequency array display and turns off the waveform generator and power supply.
 
 ---
 
 ### 7. **Automated Mode Button**
    - **Description**: Opens the dropdown for automated mode settings.
-   - **Function**: This button opens a menu where the user can set the system to an automated mode, allowing for predefined actions and measurements to be taken automatically based on user-selected parameters.
+   - **Function**: This button opens a menu where the user can set the system to an automated mode.
 
 ---
 
@@ -89,9 +143,5 @@ print(rm.list_resources())
     python mps_app.py
     ```
 
-- **Navigating the Interface**: Use the buttons described above to interact with the application. Each button triggers specific functionalities like calibration, data collection, and background subtraction.
-
 ---
 
-## License
-*(Add licensing information here, such as MIT License, GPL, or proprietary license.)*
