@@ -133,6 +133,16 @@ To run this application, you'll need Python 3.7+ installed along with the requir
 ### 7. **Automated Mode Button**
    - **Description**: Opens the dropdown for automated mode settings.
    - **Function**: This button opens a menu where the user can set the system to an automated mode.
+#### 7.1. Run With Static ac:
+   - **Description**: Performs an automatic sweep of the dc output current while the ac field remains constant at preset value.
+   - **Functionality**: 
+     -When clicked, the system will sweep through a range of dc currents from 0A to 10A.
+     -Harmonics data from the first till the eleventh harmonic will be recorded and plotted after the run
+#### 7.2. Run With Static dc:
+   - **Description**: Performs an automatic sweep of the ac output waveform amplitude while the dc field remains constant at preset value.
+   - **Functionality**: 
+     -When clicked, the system will sweep through a range of ac fields from 0 till 2.45V ~ 20mT
+     -Harmonics data from the first till the eleventh harmonic will be recorded and plotted after the run
 
 ---
 
