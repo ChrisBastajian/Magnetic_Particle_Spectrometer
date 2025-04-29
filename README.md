@@ -27,7 +27,7 @@ To run this application, you'll need Python 3.7+ installed along with the requir
 
 3. Set up your **National Instruments DAQ** hardware if you're using a data acquisition system. Ensure that the channels are configured according to the script (`Dev3/ai0`, `Dev3/ai1`, etc.).
 
-### 4. Configure your waveform generator and power supply by running:
+4. Configure your waveform generator and power supply by running:
 
 ```python
 import pyvisa
@@ -35,6 +35,8 @@ import pyvisa
 rm = pyvisa.ResourceManager()
 print(rm.list_resources())
 ```
+
+Note that the waveform generator **KEYSIGHT 33500B** is connected via GPIB connection. The power supply **GWINSTEK PFR-100L** is connected via usb. More information can be found about these in the wave_gen.py script
 ---
 ## Buttons and Their Functionality
 
