@@ -36,7 +36,7 @@ rm = pyvisa.ResourceManager()
 print(rm.list_resources())
 ```
 
-Note that the waveform generator **KEYSIGHT 33500B** is connected via GPIB connection. The power supply **GWINSTEK PFR-100L** is connected via usb. More information can be found about these in the wave_gen.py script
+    Note that the waveform generator **KEYSIGHT 33500B** is connected via GPIB connection. The power supply **GWINSTEK PFR-100L** is connected via usb. More information can be found about these in the wave_gen.py script
 ---
 ## Buttons and Their Functionality
 
