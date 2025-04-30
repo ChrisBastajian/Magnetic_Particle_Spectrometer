@@ -19,6 +19,8 @@ ctk.set_default_color_theme("dark-blue")
 class App(ctk.CTk):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.phases = None
+        self.num_steps = 50
         self.i_dc = None
         self.mode = None
         self.harmonics = None
@@ -38,14 +40,14 @@ class App(ctk.CTk):
         self.frequency = 1000  # Default Frequency (Hz)
         self.channel = "1"
         self.dc_offset = 0
-        self.only_odd_harmonics = False
+        self.only_harmonics = False
         self.triggering_enabled = True
 
         # DAQ Card Parameters
         self.daq_signal_channel = "Dev3/ai0"
         self.daq_current_channel = "Dev3/ai1"
         self.daq_trigger_channel = "/Dev3/pfi0"
-        self.sample_rate = 100000  # Hz
+        self.sample_rate = 100000  #Hz
         self.num_periods = 100
 
         ########### Title bar frame ########################
@@ -129,7 +131,7 @@ class App(ctk.CTk):
         self.fig6 = plt.figure(figsize=(x_fig, y_fig))
         self.ax6 = self.fig6.add_subplot(111)
 
-        y_canvas = [int(self.height * 0.25), int(self.height * 0.7)]
+        y_canvas = [int(self.height *0.25), int(self.height * 0.7)]
         x_canvas = [int(self.width * 0.17), int(self.width * 0.5), int(self.width * 0.83)]
 
         self.canvas1 = FigureCanvasTkAgg(self.fig1, master=self)
@@ -153,33 +155,27 @@ class App(ctk.CTk):
         # For each canvas
         self.toolbar1 = NavigationToolbar2Tk(self.canvas1, self)
         self.toolbar1.update()
-        self.toolbar1.place(x=x_canvas[0] - int(self.width * 0.075), y=y_canvas[0] + int(self.height * 0.22),
-                            anchor='center')
+        self.toolbar1.place(x=x_canvas[0]-int(self.width *0.075), y=y_canvas[0] + int(self.height * 0.22), anchor='center')
 
         self.toolbar2 = NavigationToolbar2Tk(self.canvas2, self)
         self.toolbar2.update()
-        self.toolbar2.place(x=x_canvas[1] - int(self.width * 0.075), y=y_canvas[0] + int(self.height * 0.22),
-                            anchor='center')
+        self.toolbar2.place(x=x_canvas[1]-int(self.width *0.075), y=y_canvas[0] + int(self.height * 0.22), anchor='center')
 
         self.toolbar3 = NavigationToolbar2Tk(self.canvas3, self)
         self.toolbar3.update()
-        self.toolbar3.place(x=x_canvas[2] - int(self.width * 0.075), y=y_canvas[0] + int(self.height * 0.22),
-                            anchor='center')
+        self.toolbar3.place(x=x_canvas[2]-int(self.width *0.075), y=y_canvas[0] + int(self.height * 0.22), anchor='center')
 
         self.toolbar4 = NavigationToolbar2Tk(self.canvas4, self)
         self.toolbar4.update()
-        self.toolbar4.place(x=x_canvas[0] - int(self.width * 0.075), y=y_canvas[1] + int(self.height * 0.22),
-                            anchor='center')
+        self.toolbar4.place(x=x_canvas[0]-int(self.width *0.075), y=y_canvas[1] + int(self.height * 0.22), anchor='center')
 
         self.toolbar5 = NavigationToolbar2Tk(self.canvas5, self)
         self.toolbar5.update()
-        self.toolbar5.place(x=x_canvas[1] - int(self.width * 0.075), y=y_canvas[1] + int(self.height * 0.22),
-                            anchor='center')
+        self.toolbar5.place(x=x_canvas[1]-int(self.width *0.075), y=y_canvas[1] + int(self.height * 0.22), anchor='center')
 
         self.toolbar6 = NavigationToolbar2Tk(self.canvas6, self)
         self.toolbar6.update()
-        self.toolbar6.place(x=x_canvas[2] - int(self.width * 0.075), y=y_canvas[1] + int(self.height * 0.22),
-                            anchor='center')
+        self.toolbar6.place(x=x_canvas[2]-int(self.width *0.075), y=y_canvas[1] + int(self.height * 0.22), anchor='center')
 
         # Add a button for each figure to open the plot in a new window
         self.add_plot_button(self.fig1, x_canvas[0], y_canvas[0])
@@ -189,7 +185,7 @@ class App(ctk.CTk):
         self.add_plot_button(self.fig5, x_canvas[1], y_canvas[1])
         self.add_plot_button(self.fig6, x_canvas[2], y_canvas[1])
 
-        # Clear Comparison Button:
+        #Clear Comparison Button:
         self.clear_plot_button(self.ax1, x_canvas[0], y_canvas[0])
         self.clear_plot_button(self.ax2, x_canvas[1], y_canvas[0])
         self.clear_plot_button(self.ax3, x_canvas[2], y_canvas[0])
@@ -200,18 +196,18 @@ class App(ctk.CTk):
     ################ Functions for user interface ###########################
     def clear_plot_button(self, ax, x, y):
         button = ctk.CTkButton(self, text="Clear", command=lambda: self.clear_plot(ax), width=0)
-        button.place(x=x + int(self.width * 0.1), y=y + int(self.height * 0.22), anchor="center")
+        button.place(x=x+int(self.width *0.1), y=y + int(self.height * 0.22), anchor="center")
 
     def clear_plot(self, ax):
-        if ax is self.ax6:  # if we are resetting ax6 which contains the MH curves compared
-            self.run = 0
+        if ax is self.ax6: #if we are resetting ax6 which contains the MH curves compared
+            self.run=0
 
         ax.clear()
         ax.figure.canvas.draw_idle()
 
     def add_plot_button(self, figure, x, y):
         button = ctk.CTkButton(self, text="View Full Plot", command=lambda: self.open_plot_window(figure), width=0)
-        button.place(x=x + int(self.width * 0.05), y=y + int(self.height * 0.22), anchor="center")
+        button.place(x=x+int(self.width *0.05), y=y + int(self.height * 0.22), anchor="center")
 
     def open_plot_window(self, figure):
         # Create a new top-level window with customtkinter
@@ -245,7 +241,7 @@ class App(ctk.CTk):
 
         toolbar = NavigationToolbar2Tk(canvas, new_window)
         toolbar.update()
-        toolbar.place(x=self.width // 2, y=self.height * 0.8, anchor='center')
+        toolbar.place(x=self.width//2, y=self.height*0.8, anchor='center')
 
     def open_files_dropdown(self):
         dropdown_window = ctk.CTkToplevel(self)
@@ -280,7 +276,7 @@ class App(ctk.CTk):
     def open_setup_analysis_window(self):
         setup_window = ctk.CTkToplevel(self)
         setup_window.title("Setup Analysis")
-        setup_window.geometry(str(self.width // 8) + "x" + str(self.height // 8))
+        setup_window.geometry(str(self.width//8) + "x" + str(self.height//8))
         setup_window.attributes("-topmost", True)
 
         frame_width = int(self.width * 0.45)
@@ -336,16 +332,16 @@ class App(ctk.CTk):
         dc_entry.place(x=x_spacing + input_width + self.width * 0.02, y=y, anchor="center")
         y += self.height * 0.06
 
-        # Odd harmonics?
-        odd_label = ctk.CTkLabel(small_frame, text="Only Odd Harmonics?", font=label_font)
-        odd_label.place(x=x_spacing, y=y, anchor="center")
+        # Only Plot harmonics?
+        harmonics_label = ctk.CTkLabel(small_frame, text="Only Plot Harmonics?", font=label_font)
+        harmonics_label.place(x=x_spacing, y=y, anchor="center")
         yes_radio = ctk.CTkRadioButton(small_frame, text="Yes", fg_color='blue', hover_color="white", font=label_font)
         yes_radio.place(x=x_spacing + input_width + self.width * 0.02, y=y, anchor="center")
         no_radio = ctk.CTkRadioButton(small_frame, text="No", fg_color='blue', hover_color="white", font=label_font,
                                       command=yes_radio.deselect)
         no_radio.place(x=x_spacing + input_width + self.width * 0.1, y=y, anchor="center")
 
-        if self.only_odd_harmonics:  # initial values
+        if self.only_harmonics: #initial values
             yes_radio.select()
         else:
             no_radio.select()
@@ -452,7 +448,7 @@ class App(ctk.CTk):
             self.dc_offset = float(dc_entry.get())
 
             # Save harmonic preference and triggering using your _check_state method
-            self.only_odd_harmonics = True if yes_radio._check_state else False
+            self.only_harmonics = True if yes_radio._check_state else False
             self.triggering_enabled = True if trig_yes_radio._check_state else False
 
             # Save DAQ parameters
@@ -468,7 +464,7 @@ class App(ctk.CTk):
                 f"Frequency: {self.frequency}\n"
                 f"Channel #: {self.channel}\n"
                 f"DC Offset: {self.dc_offset}\n"
-                f"Only Odd Harmonics: {self.only_odd_harmonics}\n"
+                f"Only Harmonics: {self.only_harmonics}\n"
                 f"Triggering Enabled: {self.triggering_enabled}\n"
                 f"DAQ Signal Channel: {self.daq_signal_channel}\n"
                 f"DAQ Current Channel: {self.daq_current_channel}\n"
@@ -481,17 +477,16 @@ class App(ctk.CTk):
             self.parameter_textbox.insert("0.0", result_text)
             self.parameter_textbox.configure(state="disabled")
 
-            # setup_window.destroy()
+            #setup_window.destroy()
 
-        # textbox to show updated parameters
+        #textbox to show updated parameters
         box_width = int(self.width * 0.3)
         box_height = int(self.height * 0.25)  # 25% of window height
 
-        self.parameter_textbox = ctk.CTkTextbox(setup_window, width=box_width, height=box_height, state='disabled',
-                                                font=label_font)
+        self.parameter_textbox = ctk.CTkTextbox(setup_window, width=box_width, height=box_height, state='disabled', font=label_font)
         self.parameter_textbox.place(x=self.width * 0.5, y=self.height * 0.7, anchor="center")
 
-        # Save button
+        #Save button
         save_button = ctk.CTkButton(setup_window, text="Save Settings", command=save_values)
         save_button.place(x=self.width * 0.5, y=self.height * 0.85, anchor="center")
 
@@ -503,7 +498,6 @@ class App(ctk.CTk):
 
         def toggle_zoom():
             self.zoom_to_11_enabled = zoom_checkbox.get()
-
         zoom_checkbox = ctk.CTkCheckBox(
             plot_settings_window,
             text="Zoom to 11 Harmonics",
@@ -521,7 +515,7 @@ class App(ctk.CTk):
         dropdown_window.geometry("200x150")
 
         dropdown_window.attributes("-topmost", True)
-        frame = ctk.CTkFrame(dropdown_window)
+        frame = ctk.CTkFrame(dropdown_window, bg_color="gray")
         frame.pack(fill="both", expand=True)
 
         scrollbar = ctk.CTkScrollbar(frame)
@@ -540,15 +534,27 @@ class App(ctk.CTk):
                 threading.Thread(target=self.auto_mode_static_ac).start()
             elif selected == "Run with static DC":
                 threading.Thread(target=self.auto_mode_static_dc).start()
-
         listbox.bind("<<ListboxSelect>>", on_select)
 
+        num_steps_lbl = ctk.CTkLabel(frame, text="num_steps", bg_color="white")
+        num_steps_lbl.place(relx=0.25, rely=0.7, relwidth=0.4, anchor="center")
+        num_steps_entry = ctk.CTkEntry(frame, bg_color="white")
+        num_steps_entry.place(relx=0.7, rely=0.7, relwidth=0.4, anchor="center")
+
+        num_steps_entry.insert(0, str(self.num_steps))
+
+        def save_values():
+            # Save waveform parameters
+            self.num_steps = int(num_steps_entry.get())
+
+        save_button = ctk.CTkButton(frame, text="Save Settings", command=save_values)
+        save_button.place(relx=0.5, rely=0.9, relwidth=0.6, anchor="center")
     #####################functions to run data#####################
     def calibrate_H_V(self):
-        self.H_cal = np.zeros(50)  # array to store the calibrated field
+        self.H_cal = np.zeros(50)               #array to store the calibrated field
         self.V_cal = np.zeros(50)
 
-        v_amplitude = 0  # start at 0
+        v_amplitude = 0 #start at 0
         sample_rate = 100000  # no need for more than that for the 11th harmonic
         num_periods = int(self.num_periods)
 
@@ -571,8 +577,10 @@ class App(ctk.CTk):
             if v_amplitude > 3:
                 v_amplitude = 0
 
+
             # get the sample's data:
             i_rms = analyze.get_rms_current(current_source, sample_rate, num_periods, daq_trigger)
+
 
             # get the magnetization from the detected rms current:
             H_magnitude = 5.0093 * i_rms * np.sqrt(2)
@@ -609,7 +617,7 @@ class App(ctk.CTk):
         daq_trigger = self.daq_trigger_channel
         gpib_address = 10
 
-        V_amplitude = (1 / self.slope) * float(self.ac_amplitude)
+        V_amplitude = (1/self.slope) * float(self.ac_amplitude)
 
         frequency = float(self.frequency)
 
@@ -620,8 +628,7 @@ class App(ctk.CTk):
 
         # Call the background_subtraction function with appropriate arguments
         num_samples, background_magnitude, background_frequency, background_phase, daq_readout, background_complex = analyze.get_background(
-            daq_signal, daq_source, daq_trigger, sample_rate, num_periods, gpib_address, V_amplitude, frequency,
-            channel,
+            daq_signal, daq_source,daq_trigger, sample_rate, num_periods, gpib_address, V_amplitude, frequency, channel,
             dc_current)
 
         recon, integral = analyze.reconstruct_and_integrate(num_samples, background_frequency, background_magnitude,
@@ -703,7 +710,7 @@ class App(ctk.CTk):
         daq_trigger = self.daq_trigger_channel
         gpib_address = 10
 
-        V_amplitude = (1 / self.slope) * float(self.ac_amplitude)
+        V_amplitude = (1/self.slope) * float(self.ac_amplitude)
 
         frequency = float(self.frequency)
 
@@ -718,14 +725,14 @@ class App(ctk.CTk):
         (num_samples, sample_magnitude, signal_frequency, signal_with_background, sample_phase, i_rms,
          signal_with_background_complex, sample_complex) = analyze.get_sample_signal(
             daq_signal, daq_source, daq_trigger, sample_rate, num_periods, gpib_address, V_amplitude,
-            frequency, channel, dc_current, background_complex, self.only_odd_harmonics)
+            frequency, channel, dc_current, background_complex, self.only_harmonics)
 
         sample_phase = np.abs(sample_magnitude)
         self.signal_with_background = signal_with_background
-        self.signal_frequency_array_amplitude = signal_with_background_complex  # this is the sample with its background (raw fourrier transform)
+        self.signal_frequency_array_amplitude = signal_with_background_complex #this is the sample with its background (raw fourrier transform)
         self.sample_frequency_array_magnitude = sample_magnitude
         self.sample_frequency_array_amplitude = sample_complex
-        self.sample_frequency_array_frequency = signal_frequency  # frequency array of the frequencies (considers sampling rate)
+        self.sample_frequency_array_frequency = signal_frequency #frequency array of the frequencies (considers sampling rate)
 
         # reconstruct the waveform over one period and get the magnetization (integral)
         recon, integral = analyze.reconstruct_and_integrate(num_samples, signal_frequency, sample_magnitude,
@@ -793,8 +800,8 @@ class App(ctk.CTk):
         self.ax5.set_xlabel("H", fontsize=10)
         self.ax5.set_ylabel("dM/dH", fontsize=10)
         # Need half of a period for MH and dM/dH:
-        # integral = integral[:len(integral) // 2]
-        # H = H[:len(H) // 2]
+        #integral = integral[:len(integral) // 2]
+        #H = H[:len(H) // 2]
         dMdH = analyze.dMdH(integral, H)
 
         self.ax5.plot(H, dMdH)
@@ -821,7 +828,7 @@ class App(ctk.CTk):
         daq_trigger = self.daq_trigger_channel
         gpib_address = 10
 
-        V_amplitude = (1 / self.slope) * float(self.ac_amplitude)
+        V_amplitude = (1/self.slope) * float(self.ac_amplitude)
 
         frequency = float(self.frequency)
 
@@ -845,9 +852,7 @@ class App(ctk.CTk):
                 voltage_raw = task.read(number_of_samples_per_channel=num_samples)  # read pure daq readout
 
                 # Get the fourier data
-                fourier_magnitude, fourier_frequency, phase, fourier_amplitude = analyze.fourier(voltage_raw,
-                                                                                                 sample_rate,
-                                                                                                 num_samples)
+                fourier_magnitude, fourier_frequency, phase, fourier_amplitude = analyze.fourier(voltage_raw, sample_rate, num_samples)
                 fourier_magnitude = np.abs(fourier_magnitude)
 
                 self.update_plot(fourier_frequency, fourier_magnitude, sample_rate)
@@ -877,21 +882,26 @@ class App(ctk.CTk):
         self.on_off = 0  # set the state to off
         self.waveform_generator.close()
 
-    def auto_mode_static_dc(self):  # To record harmonics and compare them
+    def auto_mode_static_dc(self): #To record harmonics and compare them
         self.mode = "Static DC with varying ac."
-        num_steps = 50  # arrays will be of size 50
-        harmonic_orders = list(range(1, 12))  # 2nd to 11th
-        harmonic_indices = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+        num_steps = self.num_steps
+        max_v= 25 * (1/self.slope) #the max field we want is 25mT
+        step_size = max_v / num_steps
+
+        harmonic_orders = list(range(1, 12))  #2nd to 11th
+        harmonic_indices = [1, 2, 3,4, 5, 6, 7, 8, 9, 10, 11]
 
         self.max_H_field = np.zeros(num_steps)
         self.harmonics = {order: np.zeros(num_steps) for order in harmonic_orders}
-        v_amplitude = 0  # start at 0...
+        self.phases = {order: np.zeros(num_steps) for order in harmonic_orders}
+
+        v_amplitude = 0 #start at 0...
 
         sample_rate = 100000  # no need for more than that for the 11th harmonic
         num_periods = int(self.num_periods)
 
-        for i in range(len(harmonic_indices)):  # the frequency array varies based on the number of samples
-            harmonic_indices[i] = harmonic_indices[i] * int(num_periods)
+        for i in range(len(harmonic_indices)):                          #the frequency array varies based on the number of samples
+            harmonic_indices[i]= harmonic_indices[i] * int(num_periods)
 
         daq_signal = self.daq_signal_channel
         daq_source = self.daq_current_channel
@@ -905,19 +915,24 @@ class App(ctk.CTk):
         # Get the dc current you want to run through the helmoholtz coils:
         dc_current = float(self.dc_offset)  # Amps
 
-        # check which supply remains static:
+        #turn on dc offset:
         power_supply = wave_gen.DC_offset(dc_current)
+        #connect to the waveform generator:
+        waveform_generator = wave_gen.connect_waveform_generator(gpib_address=gpib_address)
+        wave_gen.send_voltage(waveform_generator, v_amplitude, frequency, channel)
         for l in range(num_steps):
             if v_amplitude > 4.5:
                 v_amplitude = 0
+            else:
+                wave_gen.send_voltage(waveform_generator, v_amplitude, frequency, channel)
 
             background_complex = self.background_frequency_array_complex
 
             # get the sample's data:
-            num_samples, sample_magnitude, signal_frequency, signal_with_background, sample_phase, i_rms, \
+            num_samples, sample_magnitude, signal_frequency, signal_with_background, sample_phase, i_rms,\
                 signal_with_background_complex, sample_complex = analyze.get_sample_signal(
-                daq_signal, daq_source, daq_trigger, sample_rate, num_periods, gpib_address, v_amplitude,
-                frequency, channel, dc_current=None, background_complex=background_complex, isClean=False)
+                daq_signal, daq_source, daq_trigger, sample_rate, num_periods, gpib_address, amplitude=None,
+                frequency=frequency, channel=channel, dc_current=None, background_complex=background_complex, isClean=False)
 
             self.frequency_array_magnitude = sample_magnitude
 
@@ -928,29 +943,36 @@ class App(ctk.CTk):
             # Store all harmonics
             for i, order in enumerate(harmonic_orders):
                 self.harmonics[order][l] = sample_magnitude[harmonic_indices[i]]
+                self.phases[order][l] = sample_phase[harmonic_indices[i]]
 
-            v_amplitude += 0.05
+            v_amplitude += step_size
             time.sleep(0.01)
         if power_supply:
             wave_gen.turn_off_dc_output(power_supply)
             power_supply.close()
-        self.plot_harmonics(field=self.max_H_field, dc_static=True)
+        if waveform_generator:
+            wave_gen.turn_off(waveform_generator, channel)
+        self.plot_harmonics(field=self.max_H_field,dc_static=True)
 
     def auto_mode_static_ac(self):
         self.mode = "Static ac with varying DC."
-        num_steps = 200  # arrays will be of size 200
+        num_steps = self.num_steps
+        max_current = 10 #going from 0 to 10 A
+        step_size = max_current/ num_steps
+
         harmonic_orders = list(range(1, 12))  # 2nd to 11th
         harmonic_indices = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 
         self.i_dc = np.zeros(num_steps)
         self.harmonics = {order: np.zeros(num_steps) for order in harmonic_orders}
+        self.phases = {order: np.zeros(num_steps) for order in harmonic_orders}
         v_amplitude = 0  # start at 0...
 
         sample_rate = 100000  # no need for more than that for the 11th harmonic
         num_periods = int(self.num_periods)
 
-        for i in range(len(harmonic_indices)):  # the frequency array varies based on the number of samples
-            harmonic_indices[i] = harmonic_indices[i] * int(num_periods)
+        for i in range(len(harmonic_indices)):                          #the frequency array varies based on the number of samples
+            harmonic_indices[i]= harmonic_indices[i] * int(num_periods)
 
         daq_signal = self.daq_signal_channel
         daq_source = self.daq_current_channel
@@ -989,35 +1011,40 @@ class App(ctk.CTk):
             # Store all harmonics
             for i, order in enumerate(harmonic_orders):
                 self.harmonics[order][l] = sample_magnitude[harmonic_indices[i]]
+                self.phases[order][l] = sample_phase[harmonic_indices[i]]
 
-            dc_current += 0.05
+            dc_current += step_size
             time.sleep(0.01)
         wave_gen.turn_off_dc_output(power_supply)
         power_supply.close()
         wave_gen.turn_off(waveform_generator, channel)
-        self.plot_harmonics(field=self.i_dc, dc_static=False)
+        self.plot_harmonics(field = self.i_dc ,dc_static=False)
 
     def plot_harmonics(self, field, dc_static=False):
         self.ax1.clear()
         self.ax2.clear()
+        self.ax3.clear()
+        self.ax4.clear()
+        self.ax5.clear()
+        self.ax6.clear()
         if dc_static:
             field_txt = "μo H (mT)"
         else:
             field_txt = "I_DC (A)"
 
-        self.ax1.set_title("Odd Harmonics vs Field", fontsize=11)
+        self.ax1.set_title("Odd Harmonics, Magnitude vs Field", fontsize=11)
         self.ax1.set_xlabel(field_txt, fontsize=10)
-        self.ax1.set_ylabel("Harmonics", fontsize=10)
+        self.ax1.set_ylabel("Magnitude", fontsize=10)
 
-        self.ax2.set_title("Even Harmonics vs Field", fontsize=11)
+        self.ax2.set_title("Even Harmonics, Magnitude vs Field", fontsize=11)
         self.ax2.set_xlabel(field_txt, fontsize=10)
-        self.ax2.set_ylabel("Harmonics", fontsize=10)
+        self.ax2.set_ylabel("Magnitude", fontsize=10)
 
-        for order in [3, 5, 7, 9, 11]:  # odd harmonics
+        for order in [3, 5, 7, 9, 11]: #odd harmonics
             self.ax1.plot(field, self.harmonics[order],
                           label=f'{order}rd Harmonic' if order == 3 else f'{order}th Harmonic')
 
-        for order in [2, 4, 6, 8, 10]:  # Even Harmonics
+        for order in [2, 4, 6, 8, 10]: #Even Harmonics
             self.ax2.plot(field, self.harmonics[order],
                           label=f'{order}nd Harmonic' if order == 2 else f'{order}th Harmonic')
         self.ax1.legend()
@@ -1025,13 +1052,41 @@ class App(ctk.CTk):
         self.canvas1.draw()
         self.canvas2.draw()
 
+        #Plot harmonic2/harmonic3:
+        self.ax3.set_title("2nd/3rd Harmonics, Magnitude vs Field", fontsize=11)
+        self.ax3.set_xlabel(field_txt, fontsize=10)
+        self.ax3.set_ylabel("Harmonics", fontsize=10)
+
+        self.ax3.plot(field, self.harmonics[2]/self.harmonics[3])
+        self.canvas3.draw()
+
+        #Plot Phases:
+        self.ax4.set_title("Odd Harmonics, Phase vs Field", fontsize=11)
+        self.ax4.set_xlabel(field_txt, fontsize=10)
+        self.ax4.set_ylabel("Phase (°)", fontsize=10)
+
+        self.ax5.set_title("Even Harmonics, Phase vs Field", fontsize=11)
+        self.ax5.set_xlabel(field_txt, fontsize=10)
+        self.ax5.set_ylabel("Phase (°)", fontsize=10)
+
+        for order in [3, 5, 7, 9, 11]: #odd harmonics
+            self.ax4.plot(field, self.phases[order]*(180/np.pi),
+                          label=f'{order}rd Harmonic' if order == 3 else f'{order}th Harmonic')
+
+        for order in [2, 4, 6, 8, 10]: #Even Harmonics
+            self.ax5.plot(field, self.phases[order]*(180/np.pi),
+                          label=f'{order}nd Harmonic' if order == 2 else f'{order}th Harmonic')
+        self.ax4.legend()
+        self.ax5.legend()
+        self.canvas4.draw()
+        self.canvas5.draw()
     ####################### function to save results #########################
     def save_results(self):
         filename = filedialog.asksaveasfilename(defaultextension=".mat",
                                                 filetypes=[("MATLAB files", "*.mat"), ("All files", "*.*")])
         if filename:
 
-            data = {}  # empty dictionary to hold the data
+            data = {} #empty dictionary to hold the data
 
             instructions = (
                 'Here is the naming convention used for the variables:'
@@ -1051,7 +1106,7 @@ class App(ctk.CTk):
                 'frequency': getattr(self, 'frequency', None),
                 'channel': getattr(self, 'channel', None),
                 'dc_offset': getattr(self, 'dc_offset', None),
-                'only_odd_harmonics': getattr(self, 'only_odd_harmonics', None),
+                'only_harmonics': getattr(self, 'only_harmonics', None),
                 'triggering_enabled': getattr(self, 'triggering_enabled', None),
                 'daq_signal_channel': getattr(self, 'daq_signal_channel', None),
                 'daq_current_channel': getattr(self, 'daq_current_channel', None),
@@ -1069,13 +1124,11 @@ class App(ctk.CTk):
                 data['magnetic_field'] = self.H_field
             if hasattr(self, 'sample_frequency_array_frequency') and self.sample_frequency_array_frequency is not None:
                 data['sample_frequency_array_frequency'] = self.sample_frequency_array_frequency
-            if hasattr(self,
-                       'background_frequency_array_magnitude') and self.background_frequency_array_magnitude is not None:
+            if hasattr(self, 'background_frequency_array_magnitude') and self.background_frequency_array_magnitude is not None:
                 data['background_frequency_array_magnitude'] = self.background_frequency_array_magnitude
             if hasattr(self, 'background_frequency_array_phase') and self.background_frequency_array_phase is not None:
                 data['background_frequency_array_phase'] = self.background_frequency_array_phase
-            if hasattr(self,
-                       'background_frequency_array_complex') and self.background_frequency_array_complex is not None:
+            if hasattr(self, 'background_frequency_array_complex') and self.background_frequency_array_complex is not None:
                 data['background_frequency_array_amplitude'] = self.background_frequency_array_complex
             if hasattr(self, 'signal_frequency_array_amplitude') and self.signal_frequency_array_amplitude is not None:
                 data['signal_frequency_array_amplitude'] = self.signal_frequency_array_amplitude
@@ -1102,16 +1155,30 @@ class App(ctk.CTk):
 
                 if odd_harmonics:
                     for i in [1, 3, 5, 7, 9, 11]:
-                        i_str = "harmonic_" + str(i)
+                        i_str = "harmonic_"+str(i)+"_magnitude"
                         data[i_str] = odd_harmonics[i]
                 if even_harmonics:
                     for i in [2, 4, 6, 8, 10]:
-                        i_str = "harmonic_" + str(i)
+                        i_str = "harmonic_" + str(i)+"_magnitude"
                         data[i_str] = even_harmonics[i]
+
+            if hasattr(self, 'phases') and self.phases is not None:
+                odd_phases = {order: self.phases[order] for order in [1, 3, 5, 7, 9, 11] if
+                                 self.phases[order] is not None}
+                even_phases = {order: self.phases[order] for order in [2, 4, 6, 8, 10] if
+                                  self.phases[order] is not None}
+
+                if odd_phases:
+                    for i in [1, 3, 5, 7, 9, 11]:
+                        i_str = "harmonic_"+str(i)+"_phase"
+                        data[i_str] = odd_phases[i]
+                if even_phases:
+                    for i in [2, 4, 6, 8, 10]:
+                        i_str = "harmonic_" + str(i)+"_phase"
+                        data[i_str] = even_phases[i]
 
             # Save the dictionary to a MATLAB file
             savemat(filename, data)
-
 
 if __name__ == "__main__":
     app = App()

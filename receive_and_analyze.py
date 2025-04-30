@@ -86,27 +86,18 @@ def get_background(daq_location, source_location, trigger_location, sample_rate,
     #background_magnitude = cutoff(background_amplitude)
 
     return num_samples, background_magnitude, background_frequency, background_phase, background, background_complex
+def harmonics(fourier, fourier_frequency, f_d, sample_rate):
+    # Convert fundamental to kHz
+    main_harmonic = f_d / 1000 #in kHz
+    max_harmonic = int((sample_rate / 2) // f_d) #this is based on the nyquist frequency
+    multiples = np.arange(1, max_harmonic + 1, 1)   #odd_multiples = np.arange(1, max_harmonic + 1, 2) #creates array of odd numbers
 
-def odd_harmonics(fourier, fourier_frequency, f_d, sample_rate):
-    #This is to get a fourier amplitudes array and return one with only odd harmonics:
-    main_harmonic = f_d/1000 #in kHz
-    odd_numbers = []
-    odd_range = sample_rate//2 #highest frequency detected by daq card
+    # Compute the exact odd harmonic frequencies in kHz
+    harmonic_freqs_kHz = main_harmonic * multiples
+    frequency_kHz = np.abs(fourier_frequency / 1000)
+    mask = np.isin(frequency_kHz, harmonic_freqs_kHz)
 
-    for l in range(odd_range):
-        if l%2 !=0:
-            odd_numbers = np.append(odd_numbers, l)
-
-    odd_harmonics = main_harmonic * odd_numbers
-
-    for i, frequency in enumerate(fourier_frequency):
-        frequency_kHz = np.abs(frequency / 1000)
-
-        if frequency_kHz not in odd_harmonics:
-            fourier[i] = 0
-
-        else:
-            fourier = abs(fourier)
+    fourier = fourier*mask
     return fourier
 
 def get_sample_signal(daq_location, sense_location, trigger_location, sample_rate, num_periods, gpib_address, amplitude,
@@ -149,7 +140,7 @@ def get_sample_signal(daq_location, sense_location, trigger_location, sample_rat
 
     #If odd harmonics are selected:
     if isClean:
-        sample_magnitude = odd_harmonics(sample_magnitude, signal_frequency, frequency, sample_rate) #will give the magnitudes of the odd harmonics only
+        sample_magnitude = harmonics(sample_magnitude, signal_frequency, frequency, sample_rate) #will give the magnitudes of the odd harmonics only
 
     return (num_samples, sample_magnitude, signal_frequency, signal_with_background, sample_phase,
             i_rms, signal_with_background_complex, sample_complex)
@@ -299,3 +290,26 @@ def get_frequency_spectra(daq_location, sample_rate, num_samples, gpib_address, 
     waveform_generator.close()
 
     return fourier_amplitude, fourier_frequency
+
+#inefficient odd_harmonics selection:
+def odd_harmonics1(fourier, fourier_frequency, f_d, sample_rate):
+    #This is to get a fourier amplitudes array and return one with only odd harmonics:
+    main_harmonic = f_d/1000 #in kHz
+    odd_numbers = []
+    odd_range = sample_rate//2 #highest frequency detected by daq card
+
+    for l in range(odd_range):
+        if l%2 !=0:
+            odd_numbers = np.append(odd_numbers, l)
+
+    odd_harmonics = main_harmonic * odd_numbers
+
+    for i, frequency in enumerate(fourier_frequency):
+        frequency_kHz = np.abs(frequency / 1000)
+
+        if frequency_kHz not in odd_harmonics:
+            fourier[i] = 0
+
+        else:
+            fourier = abs(fourier)
+    return fourier
