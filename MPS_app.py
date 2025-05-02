@@ -597,7 +597,7 @@ class App(ctk.CTk):
 
     def help(self):
         # URL to the rendered README.md on GitHub
-        url = "https://github.com/alexeytonyushkin/MPI-lab/blob/main/Magnetic_Particle_Spectrometer/README.md"
+        url = "https://github.com/ChrisBastajian/Magnetic_Particle_Spectrometer/blob/main/README.md"
         webbrowser.open(url)
     ##################### functions to run data acquisition #####################
     def calibrate_H_V(self):
