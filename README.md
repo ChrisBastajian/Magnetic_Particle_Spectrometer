@@ -2,7 +2,7 @@
 
 ## Description
 
-This application provides a user-friendly interface to control the Magnetic Particle Spectrometer at Oakland University, which is made up of a drive coil and a receive coil. It utilizes Python libraries such as `cutsomTkinter`, `matplotlib`, and `nidaqmx` to interact with hardware and visualize results.
+This application provides a user-friendly interface to control the Magnetic Particle Spectrometer at Oakland University, which is made up of dc biasing helholtz coils, drive coil, a receive coil, and a cancelation coil. It utilizes Python libraries such as `cutsomTkinter`, `matplotlib`, and `nidaqmx` to interact with hardware and visualize results.
 
 ---
 
@@ -39,7 +39,7 @@ To run this application, you'll need Python 3.7+ installed along with the requir
 ---
 ## Buttons and Their Functionality
 
-### 1. File Button
+### 1. Settings Button
    - **Description**: This button opens a dropdown menu for system and file management options.
    - **Functionality**: When clicked, it displays several options for the user to choose from:
      - **Save Results**
@@ -61,7 +61,7 @@ To run this application, you'll need Python 3.7+ installed along with the requir
        - **Frequency**: Set the frequency of the waveform (Hz).
        - **Channel**: Select which waveform generator channel to apply the waveform settings.
        - **DC Offset**: Set the DC biasing field that is applied by Hemholtz Coils by setting the current (A).
-       - **Harmonics**: Choose whether to include the full spectrum or to only look at odd harmonics.
+       - **Harmonics**: Choose whether to include the full spectrum or to only look at harmonics of the fundamental frequency.
        - **Triggering**: Choose whether to enable triggering for waveform generation.
      - The DAQ Card Input Channels Frame Offers the following options:
        - **Signal Channel**: Set which channel to select for signal reception.
@@ -78,6 +78,7 @@ To run this application, you'll need Python 3.7+ installed along with the requir
    - **Functionality**:
      - Users can enable or disable the zoom feature for plotting the first 11 harmonics of the waveform.
      - This allows you to zoom into the fourrier frequency spectrum at all times for more convenience.
+     - You may also filter out noise from the data and plot the curves by cosidering the effects of harmonics only and vice versa
 
 ##### 1.13. Saving Settings and Parameters
    - **Description**: After configuring the waveform and plot settings, users can save their changes.
@@ -143,7 +144,7 @@ To run this application, you'll need Python 3.7+ installed along with the requir
    - **Functionality**: 
      -When clicked, the system will sweep through a range of ac fields from 0 till 2.45V ~ 20mT
      -Harmonics data from the first till the eleventh harmonic will be recorded and plotted after the run
-
+- **Note**: You may decide how many datapoints you want to save for each array by adjusting num_steps and saving the value (press the "Save Settings" button)
 ---
 
 ## Usage Instructions
