@@ -510,6 +510,7 @@ class App(ctk.CTk):
 
         def toggle_zoom():
             self.zoom_to_11_enabled = zoom_checkbox.get()
+            self.direct_update()
         zoom_checkbox = ctk.CTkCheckBox(
             plot_settings_window,
             text="Zoom to 11 Harmonics",
@@ -1171,7 +1172,10 @@ class App(ctk.CTk):
         self.canvas1.draw()
 
         self.ax2.clear()
-        self.ax2.set_title("Sample's Frequency Spectrum (Backsubtracted)", fontsize=11)
+        if self.mode == "standard sample":
+            self.ax2.set_title("Sample's Frequency Spectrum (Backsubtracted)", fontsize=11)
+        elif self.mode == "background":
+            self.ax2.set_title("Background Frequency Spectrum", fontsize=11)
         self.ax2.set_xlabel("Frequency, kHz", fontsize=10)
         self.ax2.set_ylabel("Magnitude", fontsize=10)
         if self.zoom_to_11_enabled:
