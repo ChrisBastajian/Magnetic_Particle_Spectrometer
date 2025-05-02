@@ -273,6 +273,7 @@ class App(ctk.CTk):
 
         def on_select(event):
             selected = listbox.get(listbox.curselection())
+            dropdown_window.destroy()
             if selected == "Setup Analysis":
                 threading.Thread(target=self.open_setup_analysis_window).start()
             elif selected == "Save Results":
@@ -573,6 +574,7 @@ class App(ctk.CTk):
 
         def on_select(event):
             selected = listbox.get(listbox.curselection())
+            dropdown_window.destroy()
             if selected == "Run with static AC":
                 threading.Thread(target=self.auto_mode_static_ac).start()
             elif selected == "Run with static DC":
@@ -595,7 +597,7 @@ class App(ctk.CTk):
 
     def help(self):
         # URL to the rendered README.md on GitHub
-        url = "https://github.com/ChrisBastajian/Magnetic_Particle_Spectrometer/blob/main/README.md"
+        url = "https://github.com/alexeytonyushkin/MPI-lab/blob/main/Magnetic_Particle_Spectrometer/README.md"
         webbrowser.open(url)
     ##################### functions to run data acquisition #####################
     def calibrate_H_V(self):
@@ -934,7 +936,7 @@ class App(ctk.CTk):
         self.waveform_generator.close()
 
     def auto_mode_static_dc(self): #To record harmonics and compare them
-        self.mode = "Static DC with varying ac."
+        self.mode = "auto mode static dc"
         num_steps = self.num_steps
         max_v= 25 * (1/self.slope) #the max field we want is 25mT
         step_size = max_v / num_steps
@@ -1006,7 +1008,7 @@ class App(ctk.CTk):
         self.plot_harmonics(field=self.max_H_field,dc_static=True)
 
     def auto_mode_static_ac(self):
-        self.mode = "Static ac with varying DC."
+        self.mode = "auto mode static ac"
         num_steps = self.num_steps
         max_current = 10 #going from 0 to 10 A
         step_size = max_current/ num_steps
@@ -1247,6 +1249,7 @@ class App(ctk.CTk):
 
         def save():
             self.additional_information = message_box_entry.get() #record the user input
+            save_window.destroy()
             self.save_results() #to save to MATLAB
 
         save_button = ctk.CTkButton(save_window, command=save, text="Save")
@@ -1289,65 +1292,74 @@ class App(ctk.CTk):
             clean_parameters = {k: v for k, v in parameters.items() if v is not None}
             data['parameters'] = clean_parameters
 
-            # Check and add each attribute if it exists
-            if hasattr(self, 'magnetization') and self.magnetization is not None:
-                data['magnetization'] = self.magnetization
-            if hasattr(self, 'H_field') and self.H_field is not None:
-                data['magnetic_field'] = self.H_field
-            if hasattr(self, 'sample_frequency_array_frequency') and self.sample_frequency_array_frequency is not None:
-                data['sample_frequency_array_frequency'] = self.sample_frequency_array_frequency
-            if hasattr(self, 'background_frequency_array_magnitude') and self.background_frequency_array_magnitude is not None:
-                data['background_frequency_array_magnitude'] = self.background_frequency_array_magnitude
-            if hasattr(self, 'background_frequency_array_phase') and self.background_frequency_array_phase is not None:
-                data['background_frequency_array_phase'] = self.background_frequency_array_phase
-            if hasattr(self, 'background_frequency_array_complex') and self.background_frequency_array_complex is not None:
-                data['background_frequency_array_amplitude'] = self.background_frequency_array_complex
-            if hasattr(self, 'signal_frequency_array_amplitude') and self.signal_frequency_array_amplitude is not None:
-                data['signal_frequency_array_amplitude'] = self.signal_frequency_array_amplitude
-            if hasattr(self, 'sample_frequency_array_magnitude') and self.sample_frequency_array_magnitude is not None:
-                data['sample_frequency_array_magnitude'] = self.sample_frequency_array_magnitude
-            if hasattr(self, 'sample_frequency_array_amplitude') and self.sample_frequency_array_amplitude is not None:
-                data['sample_frequency_array_amplitude'] = self.sample_frequency_array_amplitude
-            if hasattr(self, 'max_H_field') and self.max_H_field is not None:
-                data['H_field_harmonic'] = self.max_H_field
-            if hasattr(self, 'H_field_total') and self.H_field_total:
-                data['H_field_stepped'] = self.H_field_total
-            if hasattr(self, 'background') and self.background is not None:
-                data['background'] = self.background
-            if hasattr(self, 'signal_with_background') and self.signal_with_background is not None:
-                data['signal_with_background'] = self.signal_with_background
-            if hasattr(self, 'i_dc') and self.i_dc is not None:
-                data['i_dc'] = self.i_dc
+            # Check and add each attribute if it exists and save based on the mode:
 
-            if hasattr(self, 'harmonics') and self.harmonics is not None:
-                odd_harmonics = {order: self.harmonics[order] for order in [1, 3, 5, 7, 9, 11] if
-                                 self.harmonics[order] is not None}
-                even_harmonics = {order: self.harmonics[order] for order in [2, 4, 6, 8, 10] if
-                                  self.harmonics[order] is not None}
+            if self.mode == "auto mode static dc" or self.mode == "auto mode static ac":
+                if hasattr(self, 'max_H_field') and self.max_H_field is not None: #for static dc
+                    data['H_field_harmonic'] = self.max_H_field
+                if hasattr(self, 'i_dc') and self.i_dc is not None:               #for static ac
+                    data['i_dc'] = self.i_dc
 
-                if odd_harmonics:
-                    for i in [1, 3, 5, 7, 9, 11]:
-                        i_str = "harmonic_"+str(i)+"_magnitude"
-                        data[i_str] = odd_harmonics[i]
-                if even_harmonics:
-                    for i in [2, 4, 6, 8, 10]:
-                        i_str = "harmonic_" + str(i)+"_magnitude"
-                        data[i_str] = even_harmonics[i]
+                if hasattr(self, 'harmonics') and self.harmonics is not None:
+                    odd_harmonics = {order: self.harmonics[order] for order in [1, 3, 5, 7, 9, 11] if
+                                     self.harmonics[order] is not None}
+                    even_harmonics = {order: self.harmonics[order] for order in [2, 4, 6, 8, 10] if
+                                      self.harmonics[order] is not None}
 
-            if hasattr(self, 'phases') and self.phases is not None:
-                odd_phases = {order: self.phases[order] for order in [1, 3, 5, 7, 9, 11] if
-                                 self.phases[order] is not None}
-                even_phases = {order: self.phases[order] for order in [2, 4, 6, 8, 10] if
-                                  self.phases[order] is not None}
+                    if odd_harmonics:
+                        for i in [1, 3, 5, 7, 9, 11]:
+                            i_str = "harmonic_"+str(i)+"_magnitude"
+                            data[i_str] = odd_harmonics[i]
+                    if even_harmonics:
+                        for i in [2, 4, 6, 8, 10]:
+                            i_str = "harmonic_" + str(i)+"_magnitude"
+                            data[i_str] = even_harmonics[i]
 
-                if odd_phases:
-                    for i in [1, 3, 5, 7, 9, 11]:
-                        i_str = "harmonic_"+str(i)+"_phase"
-                        data[i_str] = odd_phases[i]
-                if even_phases:
-                    for i in [2, 4, 6, 8, 10]:
-                        i_str = "harmonic_" + str(i)+"_phase"
-                        data[i_str] = even_phases[i]
+                if hasattr(self, 'phases') and self.phases is not None:
+                    odd_phases = {order: self.phases[order] for order in [1, 3, 5, 7, 9, 11] if
+                                     self.phases[order] is not None}
+                    even_phases = {order: self.phases[order] for order in [2, 4, 6, 8, 10] if
+                                      self.phases[order] is not None}
+
+                    if odd_phases:
+                        for i in [3, 5, 7, 9, 11]:
+                            i_str = "harmonic_"+str(i)+"_phase"
+                            data[i_str] = odd_phases[i]
+                    if even_phases:
+                        for i in [2, 4, 6, 8, 10]:
+                            i_str = "harmonic_" + str(i)+"_phase"
+                            data[i_str] = even_phases[i]
+            else:                                                                       #for other modes (background and sample)
+                if hasattr(self, 'H_field') and self.H_field is not None:
+                    data['magnetic_field'] = self.H_field
+
+                if hasattr(self, 'background') and self.background is not None:
+                    data['background'] = self.background
+                if hasattr(self,
+                           'background_frequency_array_magnitude') and self.background_frequency_array_magnitude is not None:
+                    data['background_frequency_array_magnitude'] = self.background_frequency_array_magnitude
+                if hasattr(self,
+                           'background_frequency_array_phase') and self.background_frequency_array_phase is not None:
+                    data['background_frequency_array_phase'] = self.background_frequency_array_phase
+                if hasattr(self,
+                           'background_frequency_array_complex') and self.background_frequency_array_complex is not None:
+                    data['background_frequency_array_amplitude'] = self.background_frequency_array_complex
+
+                if self.mode == "standard sample":
+                    if hasattr(self,
+                               'signal_frequency_array_amplitude') and self.signal_frequency_array_amplitude is not None:
+                        data['signal_frequency_array_amplitude'] = self.signal_frequency_array_amplitude
+                    if hasattr(self,
+                               'sample_frequency_array_magnitude') and self.sample_frequency_array_magnitude is not None:
+                        data['sample_frequency_array_magnitude'] = self.sample_frequency_array_magnitude
+                    if hasattr(self,
+                               'sample_frequency_array_amplitude') and self.sample_frequency_array_amplitude is not None:
+                        data['sample_frequency_array_amplitude'] = self.sample_frequency_array_amplitude
+                    if hasattr(self, 'signal_with_background') and self.signal_with_background is not None:
+                        data['signal_with_background'] = self.signal_with_background
+
+                    if hasattr(self, 'magnetization') and self.magnetization is not None:
+                        data['magnetization'] = self.magnetization
 
             # Save the dictionary to a MATLAB file
             savemat(filename, data)
