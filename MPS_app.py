@@ -7,6 +7,7 @@ import wave_gen
 import nidaqmx
 import time
 import threading
+import webbrowser
 
 from scipy.io import savemat
 from matplotlib.backends._backend_tk import NavigationToolbar2Tk
@@ -19,6 +20,7 @@ ctk.set_default_color_theme("dark-blue")
 class App(ctk.CTk):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.additional_information = None
         self.phases = None
         self.num_steps = 50
         self.i_dc = None
@@ -28,6 +30,7 @@ class App(ctk.CTk):
         self.zoom_to_11_enabled = True
         self.sample_frequency_array_magnitude = None
         self.run = 0
+
         self.title("MPS App")
         self.width = self.winfo_screenwidth()
         self.height = self.winfo_screenheight()
@@ -60,16 +63,16 @@ class App(ctk.CTk):
         btn_height = int(self.height * 0.04)
         btn_y = self.height // 36
 
-        # Total number of buttons (including File)
+        # Total number of buttons (including Settings)
         num_buttons = 7
         total_spacing_width = self.width * 0.8  # spread buttons across 80% of window
         start_x = (self.width - total_spacing_width) / 2
         btn_spacing = total_spacing_width / (num_buttons - 1)
 
         # Place each button with consistent spacing
-        self.title_bar.file = ctk.CTkButton(self.title_bar, text="File",
+        self.title_bar.file = ctk.CTkButton(self.title_bar, text="Settings",
                                             font=('Arial', int(self.height * 0.018)),
-                                            command=self.open_files_dropdown,
+                                            command=self.open_settings_dropdown,
                                             width=btn_width, height=btn_height)
         self.title_bar.file.place(x=start_x + btn_spacing * 0, y=btn_y, anchor='center')
 
@@ -108,6 +111,12 @@ class App(ctk.CTk):
                                                  command=self.open_auto_mode_dropdown,
                                                  width=btn_width, height=btn_height)
         self.title_bar.auto_mode.place(x=start_x + btn_spacing * 6, y=btn_y, anchor='center')
+
+        ############### Help Button ####################
+        self.help_window = "main" #to know what guidance text to display
+        self.help_button = ctk.CTkButton(self.title_bar, text="?", font=('Arial', int(self.height * 0.018)),
+                                         width=btn_width//6, height = btn_height, command= self.help)
+        self.help_button.place(x=start_x + btn_spacing*6 + self.width * 0.08, y=btn_y, anchor='center')
 
         ############### Figures ########################
         x_fig = 5.5
@@ -243,7 +252,7 @@ class App(ctk.CTk):
         toolbar.update()
         toolbar.place(x=self.width//2, y=self.height*0.8, anchor='center')
 
-    def open_files_dropdown(self):
+    def open_settings_dropdown(self):
         dropdown_window = ctk.CTkToplevel(self)
         dropdown_window.title("Select Option")
         dropdown_window.geometry("200x150")
@@ -267,7 +276,7 @@ class App(ctk.CTk):
             if selected == "Setup Analysis":
                 threading.Thread(target=self.open_setup_analysis_window).start()
             elif selected == "Save Results":
-                threading.Thread(target=self.save_results).start()
+                threading.Thread(target=self.save_input).start()
             elif selected == "Plot Settings":
                 threading.Thread(target=self.open_plot_settings_window).start()
 
@@ -477,6 +486,8 @@ class App(ctk.CTk):
             self.parameter_textbox.insert("0.0", result_text)
             self.parameter_textbox.configure(state="disabled")
 
+            self.direct_update() #to update the plots and arrays
+
             #setup_window.destroy()
 
         #textbox to show updated parameters
@@ -508,6 +519,38 @@ class App(ctk.CTk):
         # Restore previous state (if user reopens settings)
         if self.zoom_to_11_enabled:
             zoom_checkbox.select()
+
+        height = plot_settings_window.winfo_height()
+        width = plot_settings_window.winfo_width()
+
+        label_font = ("Arial", int(self.height * 0.012))
+        x_spacing = width * 0.2
+        y= height *0.7
+
+        # Only Plot harmonics?
+        def select_yes():
+            no_radio.deselect()
+            self.only_harmonics = True
+            self.direct_update() #directly update the arrays and plots
+
+        def select_no():
+            self.only_harmonics = False
+            yes_radio.deselect()
+            self.direct_update()
+
+        harmonics_label = ctk.CTkLabel(plot_settings_window, text="Only Plot Harmonics?", font=label_font)
+        harmonics_label.place(x=x_spacing, y=y, anchor="center")
+        yes_radio = ctk.CTkRadioButton(plot_settings_window, text="Yes", fg_color='blue', hover_color="white", font=label_font,
+                                       command=select_yes)
+        yes_radio.place(x=x_spacing + width * 0.45, y=y, anchor="center")
+        no_radio = ctk.CTkRadioButton(plot_settings_window, text="No", fg_color='blue', hover_color="white", font=label_font,
+                                      command=select_no)
+        no_radio.place(x=x_spacing + width * 0.75, y=y, anchor="center")
+
+        if self.only_harmonics: #initial values
+            yes_radio.select()
+        else:
+            no_radio.select()
 
     def open_auto_mode_dropdown(self):
         dropdown_window = ctk.CTkToplevel(self)
@@ -549,7 +592,12 @@ class App(ctk.CTk):
 
         save_button = ctk.CTkButton(frame, text="Save Settings", command=save_values)
         save_button.place(relx=0.5, rely=0.9, relwidth=0.6, anchor="center")
-    #####################functions to run data#####################
+
+    def help(self):
+        # URL to the rendered README.md on GitHub
+        url = "https://github.com/ChrisBastajian/Magnetic_Particle_Spectrometer/blob/main/README.md"
+        webbrowser.open(url)
+    ##################### functions to run data acquisition #####################
     def calibrate_H_V(self):
         self.H_cal = np.zeros(50)               #array to store the calibrated field
         self.V_cal = np.zeros(50)
@@ -606,6 +654,7 @@ class App(ctk.CTk):
 
     def run_background_subtraction(self):
         # Turn the live_frequency display off if if it's on by switching state to 0:
+        self.mode = "background"
         self.on_off = 0
 
         # Retrieve necessary parameters from the GUI
@@ -635,6 +684,7 @@ class App(ctk.CTk):
                                                             frequency)
 
         # Store the values in the self object to later have the option of saving them as .mat files
+        self.num_samples = num_samples
         self.background_frequency_array_magnitude = background_magnitude
         self.background_frequency_array_frequency = background_frequency
         self.background_frequency_array_phase = background_phase
@@ -728,6 +778,7 @@ class App(ctk.CTk):
             frequency, channel, dc_current, background_complex, self.only_harmonics)
 
         sample_phase = np.abs(sample_magnitude)
+        self.num_samples = num_samples
         self.signal_with_background = signal_with_background
         self.signal_frequency_array_amplitude = signal_with_background_complex #this is the sample with its background (raw fourrier transform)
         self.sample_frequency_array_magnitude = sample_magnitude
@@ -1080,7 +1131,127 @@ class App(ctk.CTk):
         self.ax5.legend()
         self.canvas4.draw()
         self.canvas5.draw()
+
+    def direct_update(self):
+        if self.mode == "standard sample":
+            fourier_complex = self.sample_frequency_array_amplitude
+            fourier_freq = self.sample_frequency_array_frequency
+        elif self.mode == "background":
+            fourier_complex = self.background_frequency_array_complex
+            fourier_freq = self.background_frequency_array_frequency
+        else:
+            return
+        #If we already have data, need to update plots:
+        fourier_magnitude = np.abs(fourier_complex)
+
+        if self.only_harmonics: #if we want to only plot harmonics
+            fourier_magnitude = analyze.harmonics(fourier_magnitude, fourier_freq, self.frequency, self.sample_rate)
+
+        # reconstruct the waveform over one period and get the magnetization (integral)
+        recon, integral = analyze.reconstruct_and_integrate(self.num_samples, fourier_freq, fourier_magnitude,
+                                                            self.frequency)
+
+        self.magnetization = integral  # to save to .mat file
+
+        # Update Plots:
+        self.ax1.clear()
+        self.ax1.set_title("Daq Readout", fontsize=11)
+        self.ax1.set_xlabel("Number Of Samples", fontsize=10)
+        self.ax1.set_ylabel("Magnitude", fontsize=10)
+        self.fig1.tight_layout()
+        # self.ax1.set_facecolor('#505050')
+
+        if self.mode == "standard sample":
+            self.ax1.plot(self.signal_with_background)
+        elif self.mode == "background":
+            self.ax1.plot(self.background)
+
+        self.canvas1.draw()
+
+        self.ax2.clear()
+        self.ax2.set_title("Sample's Frequency Spectrum (Backsubtracted)", fontsize=11)
+        self.ax2.set_xlabel("Frequency, kHz", fontsize=10)
+        self.ax2.set_ylabel("Magnitude", fontsize=10)
+        if self.zoom_to_11_enabled:
+            self.ax2.set_xlim(left=0, right=11)  # Zoom in to 11 harmonics
+            self.ax2.set_xticks(range(1, 12))  # Tick from 1 to 11
+        else:
+            if self.sample_rate == 100000:
+                self.ax2.set_xticks([1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 45, 49])
+            elif self.sample_rate == 1000000:
+                self.ax2.set_xticks([25, 75, 125, 175, 225, 275, 325, 375, 425, 475])
+
+        self.ax2.plot(fourier_freq / 1000, fourier_magnitude)
+
+        self.canvas2.draw()
+
+        self.ax3.clear()
+        self.ax3.set_title("Reconstructed Waveform", fontsize=11)
+        self.ax3.set_xlabel("One Period", fontsize=10)
+        self.ax3.set_ylabel("Magnitude", fontsize=10)
+        # self.ax3.set_facecolor('#505050')
+
+        self.ax3.plot(recon)
+
+        self.canvas3.draw()
+
+        self.ax4.clear()
+        self.ax4.set_title("Magnetization", fontsize=11)
+        self.ax4.set_xlabel("One Period", fontsize=10)
+        self.ax4.set_ylabel("Magnitude", fontsize=10)
+        # self.ax3.set_facecolor('#505050')
+
+        self.ax4.plot(integral)
+
+        self.canvas4.draw()
+
+        if self.mode == "standard sample":
+            H = self.H_field
+
+            self.ax5.clear()
+            self.ax5.set_title("dM/dH Curve", fontsize=11)
+            self.ax5.set_xlabel("H", fontsize=10)
+            self.ax5.set_ylabel("dM/dH", fontsize=10)
+            # Need half of a period for MH and dM/dH:
+            # integral = integral[:len(integral) // 2]
+            # H = H[:len(H) // 2]
+            dMdH = analyze.dMdH(integral, H)
+
+            self.ax5.plot(H, dMdH)
+
+            self.canvas5.draw()
+
+            self.ax6.set_title("MH Curve comparison", fontsize=11)
+            self.ax6.set_xlabel("H", fontsize=10)
+            self.ax6.set_ylabel("M", fontsize=10)
+            self.ax6.plot(H, integral, label='Run#' + str(self.run))
+
+            self.ax6.legend(loc='upper left')
+            self.canvas6.draw()
+
     ####################### function to save results #########################
+    def save_input(self):
+        save_window = ctk.CTkToplevel(self)
+        save_window.title("Setup Analysis")
+        save_window.geometry( "300x200" )
+        save_window.attributes("-topmost", True)
+
+        time.sleep(0.02)  # I noticed that the window needed time to initialize, so I set a delay here of 20 ms
+        width = save_window.winfo_width()
+        height = save_window.winfo_height()
+
+        message_box_title = ctk.CTkLabel(save_window, text="Input additional information if needed:")
+        message_box_title.place(x=width * 0.5, y=height *0.1, anchor='center')
+        message_box_entry = ctk.CTkEntry(save_window, width= int(width * 0.9))
+        message_box_entry.place(x=width *0.5, y=height * 0.4, anchor="center")
+
+        def save():
+            self.additional_information = message_box_entry.get() #record the user input
+            self.save_results() #to save to MATLAB
+
+        save_button = ctk.CTkButton(save_window, command=save, text="Save")
+        save_button.place(x=width *0.5, y=height * 0.7, anchor="center")
+
     def save_results(self):
         filename = filedialog.asksaveasfilename(defaultextension=".mat",
                                                 filetypes=[("MATLAB files", "*.mat"), ("All files", "*.*")])
@@ -1101,6 +1272,7 @@ class App(ctk.CTk):
             data['instructions'] = instructions
 
             parameters = {
+                'Information': getattr(self, 'additional_information', None),
                 'mode': getattr(self, 'mode', None),
                 'ac_amplitude': getattr(self, 'ac_amplitude', None),
                 'frequency': getattr(self, 'frequency', None),
