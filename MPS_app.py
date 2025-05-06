@@ -20,6 +20,10 @@ ctk.set_default_color_theme("dark-blue")
 class App(ctk.CTk):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.statdc_ac_amplitude = 25 #mT
+        self.statdc_dc_offset = 0 #A
+        self.statac_dc_offset = 10 #A
+        self.statac_ac_amplitude = 5 #mT
         self.additional_information = None
         self.phases = None
         self.num_steps = 50
@@ -557,7 +561,7 @@ class App(ctk.CTk):
     def open_auto_mode_dropdown(self):
         dropdown_window = ctk.CTkToplevel(self)
         dropdown_window.title("Auto Mode")
-        dropdown_window.geometry("200x150")
+        dropdown_window.geometry("400x500")
 
         dropdown_window.attributes("-topmost", True)
         frame = ctk.CTkFrame(dropdown_window, bg_color="gray")
@@ -566,35 +570,78 @@ class App(ctk.CTk):
         scrollbar = ctk.CTkScrollbar(frame)
         scrollbar.pack(side="right", fill="y")
 
-        listbox = Listbox(frame, height=6, yscrollcommand=scrollbar.set)
-        options = ['Run with static AC', 'Run with static DC']
-        for option in options:
-            listbox.insert("end", option)
-        listbox.pack(fill="both", expand=True)
-        scrollbar.configure(command=listbox.yview)
+        height = self.winfo_height()
+        label_font = ("Arial", int(height * 0.015))
+        title_font = ("Arial", int(height * 0.02))
 
-        def on_select(event):
-            selected = listbox.get(listbox.curselection())
-            dropdown_window.destroy()
-            if selected == "Run with static AC":
-                threading.Thread(target=self.auto_mode_static_ac).start()
-            elif selected == "Run with static DC":
-                threading.Thread(target=self.auto_mode_static_dc).start()
-        listbox.bind("<<ListboxSelect>>", on_select)
+        #The parameters of auto mode:
+        select_param_lbl = ctk.CTkLabel(frame, text='1. Select Parameters:', font= title_font)
+        select_param_lbl.place(relx=0.5, rely=0.05, anchor="center")
 
-        num_steps_lbl = ctk.CTkLabel(frame, text="num_steps", bg_color="white")
-        num_steps_lbl.place(relx=0.25, rely=0.7, relwidth=0.4, anchor="center")
-        num_steps_entry = ctk.CTkEntry(frame, bg_color="white")
-        num_steps_entry.place(relx=0.7, rely=0.7, relwidth=0.4, anchor="center")
+        #static ac:
+        stat_ac_frame = ctk.CTkFrame(frame, bg_color="gray", fg_color="gray")
+        stat_ac_frame.place(relx=0.25, rely=0.3, anchor="center", relwidth=0.4, relheight=0.3)
+
+        static_ac_lbl = ctk.CTkLabel(stat_ac_frame, text='Static AC parameters:', font=label_font)
+        static_ac_lbl.place(relx=0.5, rely=0.1, anchor="center")
+
+        stat_ac_amplitude_lbl = ctk.CTkLabel(stat_ac_frame, text='AC amplitude (mT):')
+        stat_ac_amplitude_lbl.place(relx=0.35, rely=0.4, anchor="center")
+        stat_ac_amplitude_entry = ctk.CTkEntry(stat_ac_frame)
+        stat_ac_amplitude_entry.place(relx=0.85, rely=0.4, relwidth=0.25,anchor="center")
+        stat_ac_amplitude_entry.insert(0, str(self.statac_ac_amplitude))
+
+        dc_max_lbl = ctk.CTkLabel(stat_ac_frame, text='DC Max (A):')
+        dc_max_lbl.place(relx=0.21, rely=0.8, anchor="center")
+        dc_max_entry = ctk.CTkEntry(stat_ac_frame)
+        dc_max_entry.place(relx=0.85, rely=0.8, relwidth=0.25,anchor="center")
+        dc_max_entry.insert(0, str(self.statac_dc_offset))
+
+        ######## static dc: ###############
+        stat_dc_frame = ctk.CTkFrame(frame, bg_color="gray", fg_color="gray")
+        stat_dc_frame.place(relx=0.75, rely=0.3, anchor="center", relwidth=0.4, relheight=0.3)
+
+        static_dc_lbl = ctk.CTkLabel(stat_dc_frame, text='Static DC parameters:', font=label_font)
+        static_dc_lbl.place(relx=0.5, rely=0.1, anchor="center")
+
+        stat_dc_amplitude_lbl = ctk.CTkLabel(stat_dc_frame, text='DC amplitude (A):')
+        stat_dc_amplitude_lbl.place(relx=0.32, rely=0.4, anchor="center")
+        stat_dc_amplitude_entry = ctk.CTkEntry(stat_dc_frame)
+        stat_dc_amplitude_entry.place(relx=0.85, rely=0.4, relwidth=0.25, anchor="center")
+        stat_dc_amplitude_entry.insert(0, str(self.statdc_dc_offset))
+
+        ac_max_lbl = ctk.CTkLabel(stat_dc_frame, text='AC Max (mT):')
+        ac_max_lbl.place(relx=0.25, rely=0.8, anchor="center")
+        ac_max_entry = ctk.CTkEntry(stat_dc_frame)
+        ac_max_entry.place(relx=0.85, rely=0.8, relwidth=0.25, anchor="center")
+        ac_max_entry.insert(0, str(self.statdc_ac_amplitude))
+
+        num_steps_lbl = ctk.CTkLabel(frame, text="num_steps")
+        num_steps_lbl.place(relx=0.3, rely=0.55, relwidth=0.4, anchor="center")
+        num_steps_entry = ctk.CTkEntry(frame)
+        num_steps_entry.place(relx=0.7, rely=0.55, relwidth=0.4, anchor="center")
 
         num_steps_entry.insert(0, str(self.num_steps))
 
         def save_values():
             # Save waveform parameters
             self.num_steps = int(num_steps_entry.get())
+            self.statac_dc_offset = float(dc_max_entry.get())
+            self.statac_ac_amplitude = float(stat_ac_amplitude_entry.get())
+            self.statdc_ac_amplitude = float(ac_max_entry.get())
+            self.statdc_dc_offset = float(stat_dc_amplitude_entry.get())
 
         save_button = ctk.CTkButton(frame, text="Save Settings", command=save_values)
-        save_button.place(relx=0.5, rely=0.9, relwidth=0.6, anchor="center")
+        save_button.place(relx=0.5, rely=0.65, relwidth=0.4, anchor="center")
+
+        #Run Buttons:
+        run_lbl = ctk.CTkLabel(frame, text="2. Run Modes:", font=title_font)
+        run_lbl.place(relx=0.5, rely=0.75, anchor="center")
+
+        run_static_ac = ctk.CTkButton(frame, text='Run Static AC',command=self.auto_mode_static_ac)
+        run_static_ac.place( relx = 0.25, rely=0.9, relwidth=0.4, anchor="center")
+        run_static_dc = ctk.CTkButton(frame, text='Run Static DC', command=self.auto_mode_static_dc)
+        run_static_dc.place(relx=0.75, rely=0.9, relwidth=0.4, anchor="center")
 
     def help(self):
         # URL to the rendered README.md on GitHub
@@ -939,7 +986,7 @@ class App(ctk.CTk):
     def auto_mode_static_dc(self): #To record harmonics and compare them
         self.mode = "auto mode static dc"
         num_steps = self.num_steps
-        max_v= 25 * (1/self.slope) #the max field we want is 25mT
+        max_v= self.statdc_ac_amplitude * (1/self.slope) #the max field we want is 25mT initially
         step_size = max_v / num_steps
 
         harmonic_orders = list(range(1, 12))  #2nd to 11th
@@ -967,7 +1014,7 @@ class App(ctk.CTk):
         channel = int(self.channel)
 
         # Get the dc current you want to run through the helmoholtz coils:
-        dc_current = float(self.dc_offset)  # Amps
+        dc_current = float(self.statdc_dc_offset)  # Amps
 
         #turn on dc offset:
         power_supply = wave_gen.DC_offset(dc_current)
@@ -1011,7 +1058,7 @@ class App(ctk.CTk):
     def auto_mode_static_ac(self):
         self.mode = "auto mode static ac"
         num_steps = self.num_steps
-        max_current = 10 #going from 0 to 10 A
+        max_current = self.statac_dc_offset #going from 0 to 10 A unless modified by user
         step_size = max_current/ num_steps
 
         harmonic_orders = list(range(1, 12))  # 2nd to 11th
@@ -1036,7 +1083,7 @@ class App(ctk.CTk):
         frequency = float(self.frequency)
 
         channel = int(self.channel)
-        v_amplitude = (1 / self.slope) * float(self.ac_amplitude)
+        v_amplitude = (1 / self.slope) * float(self.statac_ac_amplitude)
         if v_amplitude > 4.5:
             v_amplitude = 0
 
@@ -1279,7 +1326,7 @@ class App(ctk.CTk):
             data['instructions'] = instructions
 
             parameters = {
-                'Information': getattr(self, 'additional_information', None),
+                'User information': getattr(self, 'additional_information', None),
                 'mode': getattr(self, 'mode', None),
                 'ac_amplitude': getattr(self, 'ac_amplitude', None),
                 'frequency': getattr(self, 'frequency', None),
