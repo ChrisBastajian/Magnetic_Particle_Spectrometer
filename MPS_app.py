@@ -1387,6 +1387,9 @@ class App(ctk.CTk):
                 if hasattr(self, 'background') and self.background is not None:
                     data['background'] = self.background
                 if hasattr(self,
+                           'background_frequency_array_frequency') and self.background_frequency_array_frequency is not None:
+                    data['background_frequency_array_frequency'] = self.background_frequency_array_frequency
+                if hasattr(self,
                            'background_frequency_array_magnitude') and self.background_frequency_array_magnitude is not None:
                     data['background_frequency_array_magnitude'] = self.background_frequency_array_magnitude
                 if hasattr(self,
