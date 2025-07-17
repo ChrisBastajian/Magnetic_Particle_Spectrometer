@@ -20,10 +20,15 @@ ctk.set_default_color_theme("dark-blue")
 class App(ctk.CTk):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.big_system = True
         self.statdc_ac_amplitude = 25 #mT
         self.statdc_dc_offset = 0 #A
         self.statac_dc_offset = 10 #A
         self.statac_ac_amplitude = 5 #mT
+        if self.big_system:
+            self.coefficient = 5.0093 # mT/A for the large MPS
+        else:
+            self.coefficient = 2.7481 # 2.7481 mT/A for small MPS
         self.additional_information = None
         self.phases = None
         self.num_steps = 50
@@ -390,11 +395,6 @@ class App(ctk.CTk):
 
         trig_yes_radio.configure(command=deselect_trig_no)
 
-        def deselect_no():
-            no_radio.deselect()
-
-        yes_radio.configure(command=deselect_no)
-
         # DAQ Card Inputs Section
         daq_frame_width = int(self.width * 0.45)
         daq_frame_height = int(self.height * 0.5)
@@ -452,6 +452,35 @@ class App(ctk.CTk):
         num_periods_entry = ctk.CTkEntry(daq_frame, width=input_width, height=input_height)
         num_periods_entry.insert(0, str(self.num_periods))
         num_periods_entry.place(x=daq_x_spacing + input_width + self.width * 0.02, y=daq_y, anchor="center")
+        daq_y += self.height * 0.06
+
+        system_label = ctk.CTkLabel(daq_frame, text="MPS System:", font=label_font)
+        system_label.place(x=daq_x_spacing, y=daq_y, anchor="center")
+        sys_big_radio = ctk.CTkRadioButton(daq_frame, text="Big", fg_color='blue', hover_color="white",
+                                            font=label_font)
+        sys_big_radio.place(x=daq_x_spacing + input_width + self.width * 0.02, y=daq_y, anchor="center")
+        sys_small_radio = ctk.CTkRadioButton(daq_frame, text="Small", fg_color='blue', hover_color="white",
+                                           font=label_font)
+        sys_small_radio.place(x=daq_x_spacing + input_width + self.width * 0.1, y=daq_y, anchor="center")
+
+        if self.big_system:
+            sys_big_radio.select()
+            self.coefficient = 5.0093  #mT/A
+        else:
+            sys_small_radio.select()
+            self.coefficient = 2.7481 #mT/A
+
+        def deselect_small():
+            self.big_system = True
+            sys_small_radio.deselect()
+            self.coefficient = 5.0093
+        def deselect_big():
+            self.big_system = False
+            sys_big_radio.deselect()
+            self.coefficient = 2.7481
+
+        sys_small_radio.configure(command=deselect_big)
+        sys_big_radio.configure(command=deselect_small)
 
         # Save Button to save all values
         def save_values():
@@ -484,7 +513,8 @@ class App(ctk.CTk):
                 f"DAQ Current Channel: {self.daq_current_channel}\n"
                 f"DAQ Trigger Channel: {self.daq_trigger_channel}\n"
                 f"Sample Rate: {self.sample_rate}\n"
-                f"Num Periods: {self.num_periods}"
+                f"Num Periods: {self.num_periods}\n"
+                f"Big MPS: {self.big_system}\n"
             )
             self.parameter_textbox.configure(state="normal")
             self.parameter_textbox.delete("0.0", "end")
@@ -681,7 +711,7 @@ class App(ctk.CTk):
 
 
             # get the magnetization from the detected rms current:
-            H_magnitude = 5.0093 * i_rms * np.sqrt(2)
+            H_magnitude = self.coefficient * i_rms * np.sqrt(2)
 
             self.H_cal[l] = H_magnitude
             self.V_cal[l] = v_amplitude
@@ -842,7 +872,7 @@ class App(ctk.CTk):
         self.magnetization = integral  # to save to .mat file
 
         # get the magnetic field from the detected rms current:
-        H_magnitude = 5.0093 * i_rms * np.sqrt(2)
+        H_magnitude = self.coefficient * i_rms * np.sqrt(2)
         H = analyze.general_reconstruction(H_magnitude, frequency)
 
         self.H_field = H  # to be saved to .mat file
@@ -1038,7 +1068,7 @@ class App(ctk.CTk):
             self.frequency_array_magnitude = sample_magnitude
 
             # get the magnetization from the detected rms current:
-            H_magnitude = 5.0093 * i_rms * np.sqrt(2)
+            H_magnitude = self.coefficient * i_rms * np.sqrt(2)
             self.max_H_field[l] = H_magnitude
 
             # Store all harmonics
