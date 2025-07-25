@@ -1022,9 +1022,9 @@ class App(ctk.CTk):
         harmonic_orders = list(range(1, 12))  #2nd to 11th
         harmonic_indices = [1, 2, 3,4, 5, 6, 7, 8, 9, 10, 11]
 
-        self.max_H_field = np.zeros(num_steps)
-        self.harmonics = {order: np.zeros(num_steps) for order in harmonic_orders}
-        self.phases = {order: np.zeros(num_steps) for order in harmonic_orders}
+        self.max_H_field = np.zeros(num_steps+1)
+        self.harmonics = {order: np.zeros(num_steps+1) for order in harmonic_orders}
+        self.phases = {order: np.zeros(num_steps+1) for order in harmonic_orders}
 
         v_amplitude = 0 #start at 0...
 
@@ -1051,7 +1051,7 @@ class App(ctk.CTk):
         #connect to the waveform generator:
         waveform_generator = wave_gen.connect_waveform_generator(gpib_address=gpib_address)
         wave_gen.send_voltage(waveform_generator, v_amplitude, frequency, channel)
-        for l in range(num_steps):
+        for l in range(num_steps+1):
             if v_amplitude > 4.5:
                 v_amplitude = 0
             else:
@@ -1094,9 +1094,9 @@ class App(ctk.CTk):
         harmonic_orders = list(range(1, 12))  # 2nd to 11th
         harmonic_indices = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 
-        self.i_dc = np.zeros(num_steps)
-        self.harmonics = {order: np.zeros(num_steps) for order in harmonic_orders}
-        self.phases = {order: np.zeros(num_steps) for order in harmonic_orders}
+        self.i_dc = np.zeros(num_steps+1)
+        self.harmonics = {order: np.zeros(num_steps+1) for order in harmonic_orders}
+        self.phases = {order: np.zeros(num_steps+1) for order in harmonic_orders}
         v_amplitude = 0  # start at 0...
 
         sample_rate = 100000  # no need for more than that for the 11th harmonic
@@ -1124,7 +1124,7 @@ class App(ctk.CTk):
         # dc current starting at 0:
         dc_current = 0
         power_supply = wave_gen.DC_offset(dc_current)
-        for l in range(num_steps):
+        for l in range(num_steps+1):
             wave_gen.send_dc_voltage(power_supply, voltage=12, current=dc_current)
             background_complex = self.background_frequency_array_complex
 
