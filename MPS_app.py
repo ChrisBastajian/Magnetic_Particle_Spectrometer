@@ -1028,7 +1028,7 @@ class App(ctk.CTk):
 
         v_amplitude = 0 #start at 0...
 
-        sample_rate = 100000  # no need for more than that for the 11th harmonic
+        sample_rate = self.sample_rate  # no need for more than that for the 11th harmonic
         num_periods = int(self.num_periods)
 
         for i in range(len(harmonic_indices)):                          #the frequency array varies based on the number of samples
@@ -1099,7 +1099,7 @@ class App(ctk.CTk):
         self.phases = {order: np.zeros(num_steps+1) for order in harmonic_orders}
         v_amplitude = 0  # start at 0...
 
-        sample_rate = 100000  # no need for more than that for the 11th harmonic
+        sample_rate = self.sample_rate  # no need for more than that for the 11th harmonic
         num_periods = int(self.num_periods)
 
         for i in range(len(harmonic_indices)):                          #the frequency array varies based on the number of samples
