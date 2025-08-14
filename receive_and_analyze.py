@@ -54,8 +54,8 @@ def receive_raw_voltage(daq_location, sample_rate, n_samps, trigger_location=Non
         if trigger_location is not None:
             task.triggers.start_trigger.cfg_dig_edge_start_trig(trigger_location, Edge.RISING)
 
-        task.timing.cfg_samp_clk_timing(sample_rate, samps_per_chan=n_samps)
-        voltage_raw = task.read(number_of_samples_per_channel= n_samps)
+        task.timing.cfg_samp_clk_timing(sample_rate, samps_per_chan=int(n_samps))
+        voltage_raw = task.read(number_of_samples_per_channel= int(n_samps))
         return voltage_raw
 
 def get_background(daq_location, source_location, trigger_location, sample_rate, num_periods, gpib_address,
