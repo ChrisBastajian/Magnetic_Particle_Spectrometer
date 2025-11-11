@@ -62,9 +62,9 @@ turn_off(waveform_generator, channel=1)
 ################################################################################################################################################
 #For DC Power Supply:
 
-rm = pyvisa.ResourceManager()
-resources = rm.list_resources('?*')
-print(f"Found: {resources}")
+#rm = pyvisa.ResourceManager()
+#resources = rm.list_resources('?*')
+#print(f"Found: {resources}")
 
 def connect_power_supply(serial_address):
     try:
