@@ -105,7 +105,7 @@ class App(ctk.CTk):
 
         self.title_bar.live_frequency = ctk.CTkButton(self.title_bar, text="Run Live Frequency Array",
                                                       font=('Arial', int(self.height * 0.018)),
-                                                      command=self.run_live_frequency_array,
+                                                      command=self.run_live_harmonic_display,
                                                       width=btn_width, height=btn_height)
         self.title_bar.live_frequency.place(x=start_x + btn_spacing * 4, y=btn_y, anchor='center')
 
@@ -990,6 +990,76 @@ class App(ctk.CTk):
                 self.canvas1.draw()
                 self.update()
 
+    def run_live_harmonic_display(self):
+        self.on_off = 1
+        sample_rate = int(self.sample_rate)
+        num_periods = int(self.num_periods)
+
+        daq_signal = self.daq_signal_channel
+        daq_source = self.daq_current_channel
+        daq_trigger = self.daq_trigger_channel
+        gpib_address = 10
+
+        V_amplitude = (1 / self.slope) * float(self.ac_amplitude)
+
+        frequency = float(self.frequency)
+
+        channel = int(self.channel)
+
+        num_pts_per_period = sample_rate / frequency  # Fs/F_drive
+        num_samples = int((num_periods * num_pts_per_period) + 1)
+
+        if V_amplitude > 3:
+            amplitude = 0
+
+        waveform_generator = wave_gen.connect_waveform_generator(gpib_address=gpib_address)
+        self.waveform_generator = waveform_generator  # will be used in the stop function
+        wave_gen.send_voltage(waveform_generator, V_amplitude, frequency, channel)
+
+        with nidaqmx.Task() as task:
+            task.ai_channels.add_ai_voltage_chan(daq_signal)
+            task.timing.cfg_samp_clk_timing(sample_rate, samps_per_chan=num_samples)
+
+            #Placeholders:
+            self.harmonics_arr = []
+            self.elapsed_time = []
+            start_time = time.perf_counter()
+
+            while self.on_off == 1:
+                voltage_raw = task.read(number_of_samples_per_channel=num_samples)  # read pure daq readout
+
+                # Get the fourier data
+                fourier_magnitude, fourier_frequency, phase, fourier_amplitude = analyze.fourier(voltage_raw,
+                                                                                                 sample_rate,
+                                                                                                 num_samples)
+                fourier_magnitude = np.abs(fourier_magnitude) #just ensuring
+
+                #Need to get second a 3rd harmonics:
+                targets = [frequency*2, frequency*3]
+                harmonics = fourier_magnitude[fourier_frequency == targets]
+                self.harmonics_arr.append(harmonics[1]/harmonics[0])
+
+                #recording exact time that was measured:
+                current_time = time.perf_counter()
+                self.elapsed_time.append(current_time-start_time)
+
+                self.update_plot(fourier_frequency, fourier_magnitude, sample_rate) #for the fourier frequency plot
+                self.canvas1.draw()
+                self.update_harmonic_plot(self.elapsed_time, self.harmonics_arr)
+                self.canvas2.draw()
+                self.update()
+
+    def update_harmonic_plot(self, time, harmonic):
+
+        #ax2 will be used to plot time data:
+        self.ax2.clear()
+        self.ax2.set_title("2nd/3rd Harmonic", fontsize=11)
+        self.ax2.set_xlabel("Time (s)", fontsize=10)
+        self.ax2.set_ylabel("Magnitude", fontsize=10)
+        self.ax2.plot(time, harmonic)
+        self.fig2.tight_layout()
+
+
     def update_plot(self, frequency, magnitude, f_s):
         # Update the plot
         self.ax1.clear()
@@ -1428,6 +1498,10 @@ class App(ctk.CTk):
                 if hasattr(self,
                            'background_frequency_array_complex') and self.background_frequency_array_complex is not None:
                     data['background_frequency_array_amplitude'] = self.background_frequency_array_complex
+                if hasattr(self, 'harmonics_arr') and self.harmonics_arr is not None:
+                    data['2nd_over_3rd_array_magnitude'] = self.harmonics_arr
+                if hasattr(self, "elapsed_time") and self.elapsed_time is not None:
+                    data['elapsed_time(harmonic)'] = self.elapsed_time
 
                 if self.mode == "standard sample":
                     if hasattr(self,
