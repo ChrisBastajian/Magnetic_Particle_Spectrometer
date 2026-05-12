@@ -1035,9 +1035,19 @@ class App(ctk.CTk):
                 fourier_magnitude = np.abs(fourier_magnitude) #just ensuring
 
                 #Need to get second a 3rd harmonics:
-                targets = [frequency*2, frequency*3]
-                harmonics = fourier_magnitude[fourier_frequency == targets]
-                self.harmonics_arr.append(harmonics[1]/harmonics[0])
+                target_2nd = frequency * 2
+                target_3rd = frequency * 3
+
+                idx_2nd = np.argmin(np.abs(fourier_frequency - target_2nd))
+                idx_3rd = np.argmin(np.abs(fourier_frequency - target_3rd))
+
+                second = fourier_magnitude[idx_2nd]
+                third = fourier_magnitude[idx_3rd]
+
+                #print("2nd harmonic:", second, "at", fourier_frequency[idx_2nd])
+                #print("3rd harmonic:", third, "at", fourier_frequency[idx_3rd])
+
+                self.harmonics_arr.append(second / third)
 
                 #recording exact time that was measured:
                 current_time = time.perf_counter()
@@ -1213,7 +1223,7 @@ class App(ctk.CTk):
             for i, order in enumerate(harmonic_orders):
                 self.harmonics[order][l] = sample_magnitude[harmonic_indices[i]]
                 self.phases[order][l] = sample_phase[harmonic_indices[i]]
-
+                
             dc_current += step_size
             time.sleep(0.01)
         wave_gen.turn_off_dc_output(power_supply)
