@@ -1021,7 +1021,13 @@ class App(ctk.CTk):
         #Variables in which the data will be recorded (placeholders):
         self.harmonics_arr = []
         self.elapsed_time = []
-        self.fourier_magnitude, self.fourier_frequency, phase, fourier_amplitude = nan, nan, nan, nan
+        self.fourier_magnitude, self.fourier_frequency, phase, fourier_amplitude = [], [], [], []
+        self.harmonics_arr = []
+        self.second_harmonic_time = []
+        self.second_phase_time = []
+        self.third_phase_time = []
+        self.third_harmonic_time = []
+        self.elapsed_time = []
 
         """
         Threading the plots to run in parallel
@@ -1029,7 +1035,7 @@ class App(ctk.CTk):
         """
         self.live_data_st = 1
         threading.Thread(self.update_harmonic_plot_threaded(self.elapsed_time, self.harmonics_arr)).start()
-        threading.Thread(self.update_plot_threaded(self.fourier_frequency, self.fourier_magnitude, self.sample_rate)).start()
+        threading.Thread(self.update_fourier_plot_threaded(self.fourier_frequency, self.fourier_magnitude, self.sample_rate)).start()
 
         with nidaqmx.Task() as task:
             task.ai_channels.add_ai_voltage_chan(daq_signal)
@@ -1045,21 +1051,26 @@ class App(ctk.CTk):
                 self.fourier_magnitude, self.fourier_frequency , phase, fourier_amplitude = analyze.fourier(voltage_raw,
                                                                                                  sample_rate,
                                                                                                  num_samples)
-                fourier_magnitude = np.abs(fourier_magnitude) #just ensuring
+                #fourier_magnitude = np.abs(fourier_magnitude) #just ensuring
 
                 #Need to get second a 3rd harmonics:
                 target_2nd = frequency * 2
                 target_3rd = frequency * 3
 
-                idx_2nd = np.argmin(np.abs(fourier_frequency - target_2nd))
-                idx_3rd = np.argmin(np.abs(fourier_frequency - target_3rd))
+                idx_2nd = np.argmin(np.abs(self.fourier_frequency - target_2nd))
+                idx_3rd = np.argmin(np.abs(self.fourier_frequency - target_3rd))
 
-                second = fourier_magnitude[idx_2nd]
-                third = fourier_magnitude[idx_3rd]
+                second = self.fourier_magnitude[idx_2nd]
+                third = self.fourier_magnitude[idx_3rd]
+                second_phase = phase[idx_2nd]
+                third_phase = phase[idx_3rd]
 
                 #print("2nd harmonic:", second, "at", fourier_frequency[idx_2nd])
                 #print("3rd harmonic:", third, "at", fourier_frequency[idx_3rd])
-
+                self.second_harmonic_time.append(second)
+                self.second_phase_time.append(second_phase)
+                self.third_phase_time.append(third_phase)
+                self.third_harmonic_time.append(third)
                 self.harmonics_arr.append(second / third)
 
                 #recording exact time that was measured:
@@ -1072,20 +1083,23 @@ class App(ctk.CTk):
 
     def update_harmonic_plot_threaded(self, elapsed_time, harmonics_arr):
         while self.live_data_st == 1:
-            threading.Thread(self.update_harmonic_plot(elapsed_time, harmonics_arr)).start()
+            if len(elapsed_time) > 5:
+                threading.Thread(self.update_harmonic_plot(elapsed_time, harmonics_arr)).start()
+                time.sleep(0.01)
 
     def update_fourier_plot_threaded(self, freq, mag, fs):
         while self.live_data_st == 1:
-            threading.Thread(self.update_fourier_plot(freq, mag, fs)).start()
+            threading.Thread(self.update_plot(freq, mag, fs)).start()
+            time.sleep(0.01)
 
-    def update_harmonic_plot(self, time, harmonic):
+    def update_harmonic_plot(self, the_time, harmonic):
 
         #ax2 will be used to plot time data:
         self.ax2.clear()
         self.ax2.set_title("2nd/3rd Harmonic", fontsize=11)
         self.ax2.set_xlabel("Time (s)", fontsize=10)
         self.ax2.set_ylabel("Magnitude", fontsize=10)
-        self.ax2.plot(time, harmonic)
+        self.ax2.plot(the_time, harmonic)
         self.fig2.tight_layout()
         self.canvas2.draw()
         self.update()
@@ -1531,10 +1545,20 @@ class App(ctk.CTk):
                 if hasattr(self,
                            'background_frequency_array_complex') and self.background_frequency_array_complex is not None:
                     data['background_frequency_array_amplitude'] = self.background_frequency_array_complex
+                if hasattr(self,
+                           'second_harmonic_time') and self.second_harmonic_time is not None:
+                           data['second_harmonic_time'] = self.second_harmonic_time
+                if hasattr(self, 'third_harmonic_time') and self.third_harmonic_time is not None:
+                    data['third_harmonic_time'] = self.third_harmonic_time
+                if hasattr(self,
+                           'second_phase_time') and self.second_phase_time is not None:
+                           data['second_phase_time'] = self.second_phase_time
+                if hasattr(self, 'third_phase_time') and self.third_phase_time is not None:
+                    data['third_phase_time'] = self.third_phase_time
                 if hasattr(self, 'harmonics_arr') and self.harmonics_arr is not None:
-                    data['2nd_over_3rd_array_magnitude'] = self.harmonics_arr
+                    data['normalized_array_magnitude'] = self.harmonics_arr
                 if hasattr(self, "elapsed_time") and self.elapsed_time is not None:
-                    data['elapsed_time(harmonic)'] = self.elapsed_time
+                    data['elapsed_time_harmonic'] = self.elapsed_time
 
                 if self.mode == "standard sample":
                     if hasattr(self,
