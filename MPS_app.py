@@ -40,6 +40,8 @@ class App(ctk.CTk):
         self.sample_frequency_array_magnitude = None
         self.run = 0
 
+        self.live_data_st = 0 # will turn 1 when live data is being recorded
+
         self.title("MPS App")
         self.width = self.winfo_screenwidth()
         self.height = self.winfo_screenheight()
@@ -1016,20 +1018,31 @@ class App(ctk.CTk):
         self.waveform_generator = waveform_generator  # will be used in the stop function
         wave_gen.send_voltage(waveform_generator, V_amplitude, frequency, channel)
 
+        #Variables in which the data will be recorded (placeholders):
+        self.harmonics_arr = []
+        self.elapsed_time = []
+        self.fourier_magnitude, self.fourier_frequency, phase, fourier_amplitude = nan, nan, nan, nan
+
+        """
+        Threading the plots to run in parallel
+        And frequency plot as well
+        """
+        self.live_data_st = 1
+        threading.Thread(self.update_harmonic_plot_threaded(self.elapsed_time, self.harmonics_arr)).start()
+        threading.Thread(self.update_plot_threaded(self.fourier_frequency, self.fourier_magnitude, self.sample_rate)).start()
+
         with nidaqmx.Task() as task:
             task.ai_channels.add_ai_voltage_chan(daq_signal)
             task.timing.cfg_samp_clk_timing(sample_rate, samps_per_chan=num_samples)
 
             #Placeholders:
-            self.harmonics_arr = []
-            self.elapsed_time = []
             start_time = time.perf_counter()
 
             while self.on_off == 1:
                 voltage_raw = task.read(number_of_samples_per_channel=num_samples)  # read pure daq readout
 
                 # Get the fourier data
-                fourier_magnitude, fourier_frequency, phase, fourier_amplitude = analyze.fourier(voltage_raw,
+                self.fourier_magnitude, self.fourier_frequency , phase, fourier_amplitude = analyze.fourier(voltage_raw,
                                                                                                  sample_rate,
                                                                                                  num_samples)
                 fourier_magnitude = np.abs(fourier_magnitude) #just ensuring
@@ -1051,13 +1064,19 @@ class App(ctk.CTk):
 
                 #recording exact time that was measured:
                 current_time = time.perf_counter()
+
                 self.elapsed_time.append(current_time-start_time)
 
-                self.update_plot(fourier_frequency, fourier_magnitude, sample_rate) #for the fourier frequency plot
-                self.canvas1.draw()
-                self.update_harmonic_plot(self.elapsed_time, self.harmonics_arr)
-                self.canvas2.draw()
-                self.update()
+            self.live_data_st = 0 #repeating but to make sure
+
+
+    def update_harmonic_plot_threaded(self, elapsed_time, harmonics_arr):
+        while self.live_data_st == 1:
+            threading.Thread(self.update_harmonic_plot(elapsed_time, harmonics_arr)).start()
+
+    def update_fourier_plot_threaded(self, freq, mag, fs):
+        while self.live_data_st == 1:
+            threading.Thread(self.update_fourier_plot(freq, mag, fs)).start()
 
     def update_harmonic_plot(self, time, harmonic):
 
@@ -1068,6 +1087,8 @@ class App(ctk.CTk):
         self.ax2.set_ylabel("Magnitude", fontsize=10)
         self.ax2.plot(time, harmonic)
         self.fig2.tight_layout()
+        self.canvas2.draw()
+        self.update()
 
 
     def update_plot(self, frequency, magnitude, f_s):
@@ -1086,11 +1107,13 @@ class App(ctk.CTk):
                 self.ax1.set_xticks([25, 75, 125, 175, 225, 275, 325, 375, 425, 475])
         self.ax1.plot(frequency / 1000, magnitude)
         self.fig1.tight_layout()
+        self.canvas1.draw()
 
     def stop_acquisition(self):
         channel = int(self.channel)
         self.waveform_generator.write(f"OUTPUT{channel} OFF")
         self.on_off = 0  # set the state to off
+        self.live_data_st = 0
         self.waveform_generator.close()
 
     def auto_mode_static_dc(self): #To record harmonics and compare them
