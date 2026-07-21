@@ -1022,8 +1022,6 @@ class App(ctk.CTk):
         self.harmonics_arr = []
         self.elapsed_time = []
         self.fourier_magnitude, self.fourier_frequency, phase, fourier_amplitude = [], [], [], []
-        self.harmonics_arr = []
-        self.second_harmonic_time = []
         self.second_phase_time = []
         self.third_phase_time = []
         self.third_harmonic_time = []
@@ -1082,15 +1080,20 @@ class App(ctk.CTk):
 
 
     def update_harmonic_plot_threaded(self, elapsed_time, harmonics_arr):
-        while self.live_data_st == 1:
-            if len(elapsed_time) > 5:
+        if self.live_data_st == 1 and len(elapsed_time) > 5:
+            while True:
                 threading.Thread(self.update_harmonic_plot(elapsed_time, harmonics_arr)).start()
                 time.sleep(0.01)
+                if self.live_data_st == 0:
+                    pass
 
     def update_fourier_plot_threaded(self, freq, mag, fs):
-        while self.live_data_st == 1:
-            threading.Thread(self.update_plot(freq, mag, fs)).start()
-            time.sleep(0.01)
+        if self.live_data_st == 1:
+            while True:
+                threading.Thread(self.update_plot(freq, mag, fs)).start()
+                time.sleep(0.01)
+                if self.live_data_st == 0:
+                    pass
 
     def update_harmonic_plot(self, the_time, harmonic):
 
